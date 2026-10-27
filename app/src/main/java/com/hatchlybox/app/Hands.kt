@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -116,7 +117,13 @@ object Hands {
     }
 
     /** The app the text names: among the library's items (apps made here and the phone's). */
-    fun appNamed(items: List<LibItem>, name: String): LibItem? = appCandidates(items, name).singleOrNull()
+    fun appNamed(items: List<LibItem>, name: String): LibItem? = appCandidates(items, name).let { all ->
+        // Same name twice, but only one opens here (a creation not installed from here, and an APK installed by hand): that one.
+        all.singleOrNull() ?: all.filter(::runs).singleOrNull()
+    }
+
+    /** It starts an app on this phone when opened (not a page in Hatchlybox). */
+    private fun runs(i: LibItem) = i.type == "phone" || (i.type == "apk" && i.pkg != null)
 
     /** Why no app was found, with what it could have meant, so whoever asked can say it again. */
     fun noApp(items: List<LibItem>, name: String): Done {
@@ -142,7 +149,12 @@ object Hands {
         Hand("open_app", "Open an app", "Open an app on the phone by its name", listOf("open", "launch", "start", "run", "go to", "abre", "abrir"),
             listOf(Param("app", "string", "The app's name, as said")), Level.OPEN, Icons.Outlined.Apps) { c ->
             val item = appNamed(c.items, c.str("app")) ?: return@Hand noApp(c.items, c.str("app"))
+            val before = c.m.notice
             Reach.open(c.context, c.m, item)
+            // Started means Hatchlybox left the front; if it's still there, say so (and why) instead of a plain done.
+            if (runs(item) && withTimeoutOrNull(4000) { while (Gold.front) delay(100); true } == null)
+                return@Hand Done("${item.label} didn't come up" + (c.m.notice.takeIf { it.isNotBlank() && it != before }?.let { ": $it" } ?: ": Android didn't start it.") +
+                    " Don't tap Hatchlybox's screens for it; tell the user.", false)
             // An Android creation that isn't on the phone yet opens its page: whoever asked should know it didn't start.
             if (item.type == "apk" && item.pkg == null && item.install != null)
                 Done("${item.label} isn't installed on this phone yet, so its page is open: ${item.install.first} is there. Android asks the user to confirm the install.", false)
