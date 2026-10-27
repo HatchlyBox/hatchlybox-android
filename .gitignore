@@ -2,7 +2,6 @@
 build/
 app/build/
 local.properties
-gradle.properties
 .hatchlybox.json
 play/shots/
 *.apk

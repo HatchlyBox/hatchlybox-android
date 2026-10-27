@@ -22,7 +22,8 @@ Linux (Alpine, under proot), driven by Hatchlybox Engine.
 
 ## Building
 
-JDK 17, Gradle through `./gradlew`: `./gradlew --console=plain -q assembleRelease`. The toolchain is fixed
+JDK 17, Gradle through `./gradlew`: `./gradlew --console=plain -q assembleRelease`. `gradle.properties` is shared by every machine:
+nothing secret or machine-specific in it. The toolchain is fixed
 (AGP 8.7.3, Kotlin 2.0.21, compileSdk and targetSdk 36): keep the versions in `gradle/libs.versions.toml`.
 
 ## Rules

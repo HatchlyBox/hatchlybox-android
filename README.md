@@ -19,6 +19,13 @@
   <a href="https://github.com/sponsors/HatchlyBox">Sponsor</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/HatchlyBox/hatchlybox-android/releases"><img alt="Release" src="https://img.shields.io/github/v/release/HatchlyBox/hatchlybox-android?include_prereleases&color=56DCC9&labelColor=101828"></a>
+  <a href="LICENSE"><img alt="Licence: AGPL 3.0" src="https://img.shields.io/badge/licence-AGPL%203.0-56DCC9?labelColor=101828"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/runs%20on-Android%208%2B-56DCC9?labelColor=101828">
+  <a href="https://github.com/HatchlyBox/hatchlybox-android/discussions"><img alt="Discussions" src="https://img.shields.io/badge/questions-Discussions-56DCC9?labelColor=101828"></a>
+</p>
+
 ---
 
 Hatchlybox makes apps and games from what you describe, on Android, Linux, macOS and Windows. Type what you want,
@@ -124,7 +131,7 @@ The full [privacy policy](app/src/main/assets/legal/PRIVACY.md) says exactly wha
 
 ## Building from source
 
-JDK 17, then `./gradlew --console=plain -q assembleRelease`. The engine inside the app
+JDK 17 and the Android SDK, then `./gradlew --console=plain -q assembleRelease`. The engine inside the app
 (`app/src/main/assets/maker`) comes from [HatchlyBox/hatchlybox](https://github.com/HatchlyBox/hatchlybox), copied in with its
 `sync-hatchlybox.sh`. Your own builds are signed with the debug key: they install fine but can't update an official
 copy (uninstall that one first).
@@ -137,7 +144,7 @@ sponsorships pay for its development.
 ## Contributing
 
 Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), and the
-[Contributor Licence Agreement](CLA.md) for code. Security problems: [SECURITY.md](SECURITY.md), please not as a public issue.
+[Contributor Licence Agreement](CLA.md) for code. Security problems: [SECURITY.md](SECURITY.md), please not as a public issue. Everyone here follows the [code of conduct](CODE_OF_CONDUCT.md). Questions: [Discussions](https://github.com/HatchlyBox/hatchlybox-android/discussions).
 
 ## Licence
 

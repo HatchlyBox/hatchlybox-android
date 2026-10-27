@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: A question, or help using Hatchlybox
+    url: https://github.com/HatchlyBox/hatchlybox-android/discussions
+    about: Ask in Discussions, where others can answer and find it later.
   - name: A security problem
-    url: https://github.com/HatchlyBox/hatchlybox/security/policy
+    url: https://github.com/HatchlyBox/hatchlybox-android/security/policy
     about: Please don't open a public issue for it; this page says how to report it privately.
