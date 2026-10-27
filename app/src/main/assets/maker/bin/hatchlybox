@@ -223,10 +223,11 @@ creations_index() {
       jq -nc --arg slug "$(basename "$(dirname "$d")")" --arg sys "$(basename "$d")" \
         --argjson built "$([ -d "$d/export" ] && echo true || echo false)" --argjson t "$(file_mtime "$d")" \
         --argjson installer "$([ -f "$d/export/install.sh" ] && echo true || echo false)" \
+        --arg icon "$([ -d "$d/export" ] && [ "$(basename "$d")" = web ] && wrap_icon "${d%/}/export")" \
         --argjson meta "$(jq -c 'if type == "object" then . else {} end' "$d/.port.json" 2>/dev/null || echo '{}')" \
         '{slug: $slug, system: $sys, built: $built, agent: ($meta.agent // null), created: ($meta.created // $t), idea: ($meta.idea // null),
           label: ($meta.label // null), id: ($meta.id // null), content: ($meta.content // $meta.changed // $meta.created // $t), finished: (($meta.changed // null) != null),
-          installed: ($meta.installed.content // null), installer: $installer}'
+          installed: ($meta.installed.content // null), installer: $installer, icon: (if $icon == "" then null else $icon end)}'
     done | jq -sc .)
   jq -c --argjson ports "${ports:-[]}" --arg here "$INSTALLS" --argjson job "$(jq -c . "$CACHE/job.json" 2>/dev/null || echo '{}')" '
     ($here | split(" ") | map(select(. != ""))) as $here
@@ -246,7 +247,9 @@ creations_index() {
                                           elif here($p.system) and $p.installed != null then (if $p.installed < $p.content then "update ready" else "installed" end)
                                           elif here($p.system) and $p.installer then "ready to install"
                                           elif $p.built then (if $p.system == "web" then "ready to open" else "ready to export" end) else "source only" end)}
-          | .updated = ([.updated, $p.created, $p.content] | max)))
+          | .updated = ([.updated, $p.created, $p.content] | max)
+          # No Android icon: the one of the web version (icon.png beside its index.html).
+          | .icon = (.icon // $p.icon)))
     # Older: another version has content changed after this one (made or changed later, not just copied).
     | map(([.systems | to_entries[] | {k: .key, c: (.value.content // 0)}] | max_by(.c)) as $new
         | .systems |= with_entries(if (.value.content // 0) < $new.c then .value.older = $new.k else . end))

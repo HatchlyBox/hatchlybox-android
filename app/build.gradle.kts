@@ -16,8 +16,8 @@ android {
         applicationId = "com.hatchlybox.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "6.4"
+        versionCode = 14
+        versionName = "6.4.1"
         ndk { abiFilters += "arm64-v8a" }
     }
 

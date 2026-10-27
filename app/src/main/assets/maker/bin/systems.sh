@@ -211,10 +211,12 @@ creation_label() {
 }
 
 # web_check <export dir>: what stops a web app from working, one problem per line (nothing: fine). index.html
-# there, every local file a page loads there, and every script parsing (node --check; a module as a module).
+# there, its icon, every local file a page loads there, and every script parsing (node --check; a module as a module).
 web_check() {
   local e=$1 js t err
   [ -f "$e/index.html" ] || { echo "export/index.html is missing (export/ is what runs)"; return; }
+  # Its own icon, for the library and the home screen (and the Android app it can become).
+  [ -n "$(wrap_icon "$e")" ] || echo "export/icon.png is missing: draw the app's own icon, 512×512 px, beside index.html"
   python3 -I - "$e" <<'PY'
 import html.parser, os, sys, urllib.parse
 root = os.path.realpath(sys.argv[1])

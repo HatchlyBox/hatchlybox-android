@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.4.1 (unreleased)
+
+- Web apps get their own icon, shown in the library and on the home screen.
+- The task console shows what the AI helper and the build are doing while a creation is being made.
+
 ## 6.4 (2026-10-27)
 
 - AI helpers open apps by name reliably: "the hello world app", "Hello-World!" or a small typo find it, an app made
