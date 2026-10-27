@@ -26,6 +26,21 @@
   <a href="https://github.com/HatchlyBox/hatchlybox-android/discussions"><img alt="Discussions" src="https://img.shields.io/badge/questions-Discussions-56DCC9?labelColor=101828"></a>
 </p>
 
+<p align="center">
+  <img src="docs/media/agent-plays.gif" alt="An AI helper playing Neon Run, a game it made, on the phone" width="300">
+</p>
+
+<p align="center">
+  <sub>Asked to “open Hello World and play”, the AI helper opens the game it made and plays it on the phone, at real speed.
+  <a href="https://github.com/HatchlyBox/hatchlybox-android/releases/download/v6.4/hatchlybox-demo.mp4">Watch the whole video (1:14)</a>.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/media/home.jpg" alt="Hatchlybox home screen with a game made in it" width="220">
+  <img src="docs/media/widget-opencode.jpg" alt="OpenCode in a terminal widget on the home screen" width="220">
+  <img src="docs/media/widget-claude.jpg" alt="Claude Code in a terminal widget on the home screen" width="220">
+</p>
+
 ---
 
 Hatchlybox makes apps and games from what you describe, on Android, Linux, macOS and Windows. Type what you want,
