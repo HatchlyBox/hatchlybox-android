@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.4 (2026-10-27)
+
+- AI helpers open apps by name reliably: "the hello world app", "Hello-World!" or a small typo find it, an app made
+  here and installed counts once, and when the app doesn't come up they say why instead of trying to tap
+  Hatchlybox's own screens.
+- Faster screen use: the light moves as quick as the tap it leads to, the screen is read as soon as it settles,
+  and in games each tap comes back with the screenshot.
+
 ## 6.3 (2026-10-26)
 
 - A welcome screen on first start, with the Hatchlybox logo: what it downloads and what leaves the phone in three short
