@@ -6,9 +6,9 @@ covered by that licence.
 
 ## Inside this app
 
-- PRoot 5.1.107 (Termux's build): runs the app's Linux. GNU GPL 2.0 or later. Copyright STMicroelectronics and
+- PRoot 5.1.107.96 (Termux's build): runs the app's Linux. GNU GPL 2.0 or later. Copyright STMicroelectronics and
   the PRoot authors.
-- talloc: used by PRoot. GNU LGPL 3.0 or later. Copyright the Samba team.
+- talloc 2.5.0: used by PRoot. GNU LGPL 3.0 or later. Copyright the Samba team.
 - libandroid-shmem: used by PRoot. BSD 3-Clause. Copyright Sergii Pylypenko, Fredrik Fornwall.
 - llama.cpp and ggml: run the local model. MIT. Copyright the ggml authors.
 - AndroidX, Jetpack Compose, Material Components, Kotlin standard library and coroutines: Apache 2.0. Copyright
@@ -17,10 +17,12 @@ covered by that licence.
 
 ### The source of PRoot and talloc
 
-Their licences give you the right to their source. It is at github.com/termux/proot and
-github.com/samba-team/samba (lib/talloc). For three years from when you got this version of Hatchlybox, the exact
-source of the builds inside it is also available from Hatchlybox, at no more than the cost of sending it: ask by
-opening an issue on Hatchlybox's GitHub page.
+Their licences give you the right to their source. The exact source of the builds inside each version of
+Hatchlybox is attached to its release on GitHub (github.com/HatchlyBox/hatchlybox-android/releases) as
+hatchlybox-<version>-gpl-sources.tar.gz, with Termux's build recipes and what was changed for the app. Upstream,
+it is at github.com/termux/proot and www.samba.org/ftp/talloc. For three years from when you got this version of
+Hatchlybox, the exact source of the builds inside it is also available from Hatchlybox, at no more than the cost
+of sending it: ask by opening an issue on Hatchlybox's GitHub page.
 
 ## Downloaded when you set up or ask for them
 
