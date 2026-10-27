@@ -1,6 +1,6 @@
 # Changelog
 
-## 6.4.1 (unreleased)
+## 6.4.1 (2026-10-27)
 
 - Web apps get their own icon, shown in the library and on the home screen.
 - The task console shows what the AI helper and the build are doing while a creation is being made.
