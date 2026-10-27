@@ -119,7 +119,10 @@ object Hands {
     /** The app the text names: among the library's items (apps made here and the phone's). */
     fun appNamed(items: List<LibItem>, name: String): LibItem? = appCandidates(items, name).let { all ->
         // Same name twice, but only one opens here (a creation not installed from here, and an APK installed by hand): that one.
-        all.singleOrNull() ?: all.filter(::runs).singleOrNull()
+        all.singleOrNull() ?: all.filter(::runs).let { r ->
+            // Several entries that all start the same package (two creations of one app, an app with two launcher icons): it's one app.
+            r.singleOrNull() ?: r.takeIf { it.isNotEmpty() && it.map { i -> i.pkg }.distinct().size == 1 }?.minByOrNull { if (it.type == "phone") 1 else 0 }
+        }
     }
 
     /** It starts an app on this phone when opened (not a page in Hatchlybox). */
@@ -128,7 +131,7 @@ object Hands {
     /** Why no app was found, with what it could have meant, so whoever asked can say it again. */
     fun noApp(items: List<LibItem>, name: String): Done {
         val several = appCandidates(items, name)
-        if (several.size > 1) return Done("Which one: " + several.take(5).joinToString { "\"${it.label}\"" } + "? Say its full name.", false)
+        if (several.size > 1) return Done("Which one: " + several.take(5).joinToString { "\"${it.label}\"" + (it.pkg?.let { p -> " ($p)" } ?: "") } + "? Say its full name.", false)
         val words = plain(name).split(' ').filter { it.length >= 3 }
         val near = distinctApps(items).filter { i -> words.any { w -> plain(i.label).split(' ').any { it.startsWith(w) || apart(it, w) <= 1 } } }
         return Done("No app called ${name.trim()} here." + if (near.isEmpty()) "" else " Close names: " + near.take(5).joinToString { "\"${it.label}\"" } + ".", false)
