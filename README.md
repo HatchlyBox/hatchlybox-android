@@ -26,7 +26,7 @@
   <a href="https://github.com/HatchlyBox/hatchlybox-android/discussions"><img alt="Discussions" src="https://img.shields.io/badge/questions-Discussions-56DCC9?labelColor=101828"></a>
 </p>
 
-https://github.com/user-attachments/assets/d24f6618-9ae8-4f4d-b49b-aa635f56983c
+https://github.com/user-attachments/assets/961921b7-b6f8-4c1c-86de-cb34d4d82031
 
 <p align="center">
   <sub>Asked to “open Hello World and play”, an AI helper opens Neon Run, a game it made on this phone, and plays it.
