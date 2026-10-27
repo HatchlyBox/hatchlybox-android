@@ -34,6 +34,8 @@ object PhoneBridge {
         serveJob = Setup.scope.launch { serve(context.applicationContext) }
     }
     private const val DIR = "/root/.hatchlybox/phone"
+    // Held here: an unreferenced FileObserver stops when it's collected.
+    private var watch: android.os.FileObserver? = null
     // Agents make actions themselves (their instructions say how), not through a chat with another agent.
     private val hidden = setOf("new_action")
 
@@ -67,6 +69,12 @@ object PhoneBridge {
     private suspend fun serve(context: Context) = withContext(Dispatchers.IO) {
         val linux = Linux(context.applicationContext)
         val requests = linux.hostFile("$DIR/requests"); val results = linux.hostFile("$DIR/results")
+        // Woken the moment a request lands, not on the next round.
+        requests.mkdirs()
+        val wake = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+        watch = object : android.os.FileObserver(requests.path, MOVED_TO or CLOSE_WRITE) {
+            override fun onEvent(event: Int, path: String?) { if (path?.endsWith(".json") == true) wake.trySend(Unit) }
+        }.apply { startWatching() }
         while (true) {
             requests.listFiles { f -> f.name.endsWith(".json") }.orEmpty().sortedBy { it.lastModified() }.forEach { f ->
                 val j = runCatching { JSONObject(f.readText()) }.getOrNull()
@@ -76,7 +84,7 @@ object PhoneBridge {
                 val id = f.name.removeSuffix(".json")
                 File(results, "$id.tmp").apply { writeText(JSONObject().put("ok", done.ok).put("say", done.say).apply { done.image?.let { put("image", it) } }.toString()); renameTo(File(results, "$id.json")) }
             }
-            delay(400)
+            kotlinx.coroutines.withTimeoutOrNull(1000) { wake.receive() }
         }
     }
 

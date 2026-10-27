@@ -90,8 +90,8 @@ where you look, tap and type, and they can Stop you at any moment.
   image with a red crosshair where the tap would land; adjust, then tap. `phone screen long 12` long-presses.
 - `phone screen type "text" --into 5 --enter` types into a field like the keyboard does (`--replace` clears
   it first). `phone screen scroll down [12]` shows more; `phone screen key back|home|recents|notifications`.
-- Each tap, type, scroll and key prints the screen again afterwards: check it did what you meant before the
-  next step. Open apps with `phone do open_app '{"app": "…"}'`: it goes home and opens the app from the
+- Each tap, type, scroll and key prints the screen again afterwards (with the screenshot, in an app that
+  draws its own pixels, so don't look again): check it did what you meant before the next step. Open apps with `phone do open_app '{"app": "…"}'`: it goes home and opens the app from the
   library, as the user would, so they can follow. If it says the app didn't open or isn't found, tell the
   user what it said: Hatchlybox's own screens (its home, library, create box) can't be tapped by agents.
 - After a tap, check in the screen it prints that what you meant happened (a cell tap says which [number]

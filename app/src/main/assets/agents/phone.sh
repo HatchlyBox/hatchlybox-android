@@ -7,7 +7,11 @@ die() { echo "$*" >&2; exit 1; }
 ask() {
   id=$(date +%s)-$$; mkdir -p "$D/requests" "$D/results"
   printf '%s' "$1" > "$D/requests/$id.tmp" && mv "$D/requests/$id.tmp" "$D/requests/$id.json"
-  i=0; while [ ! -f "$D/results/$id.json" ] && [ $i -lt "${2:-240}" ]; do sleep 0.5; i=$((i + 1)); done
+  # Every 50 ms for the first 10 seconds (most answers come in well under that), then every half second.
+  i=0; t=0; max=$(( ${2:-240} * 500 ))
+  while [ ! -f "$D/results/$id.json" ] && [ $t -lt $max ]; do
+    if [ $i -lt 200 ]; then sleep 0.05; t=$((t + 50)); else sleep 0.5; t=$((t + 500)); fi; i=$((i + 1))
+  done
   if [ -f "$D/results/$id.json" ]; then
     r=$(cat "$D/results/$id.json"); rm -f "$D/results/$id.json"
     printf '%s\n' "$(printf '%s' "$r" | jq -r '.say')"

@@ -379,12 +379,41 @@ object AgentScreen {
     }
 
     /** What the agent sees after acting: the screen again, a moment later. */
-    private suspend fun after(s: HandsService, said: String): Done { delay(700); return Done(said + "\n\n" + outline(s, read(s))) }
+    private suspend fun after(s: HandsService, said: String): Done {
+        val lines = settle(s)
+        // An app drawing its own pixels (a game) has no outline to speak of: the screenshot comes with the answer, saving a look.
+        val shot = if (lines.size < 3) shot(s) else null
+        return Done(said + "\n\n" + outline(s, lines) + (shot?.let { "\nScreenshot with the grid: $it" } ?: ""), true, shot)
+    }
+
+    /**
+     * The screen once the action has shown: as soon as it has changed and held still for a moment (at most 700 ms
+     * when it doesn't change). An app with almost no outline (a game) is never still in it: a short beat, then it.
+     */
+    private suspend fun settle(s: HandsService): List<String> {
+        val before = signature
+        val start = System.currentTimeMillis()
+        delay(100)
+        var lines = read(s)
+        if (lines.size < 3) return lines
+        var last = signature; var since = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < 700) {
+            delay(70); lines = read(s)
+            val now = System.currentTimeMillis()
+            if (signature != last) { last = signature; since = now }
+            else if (signature != before && now - since >= 180) break
+        }
+        return lines
+    }
 
     // ---------- screenshots ----------
 
+    /** When the last screenshot was taken: Android gives about one a second. */
+    @Volatile private var lastCapture = 0L
+
     private suspend fun capture(s: HandsService): Bitmap? {
         if (Build.VERSION.SDK_INT < 30) return null
+        (1050 - (System.currentTimeMillis() - lastCapture)).takeIf { it > 0 }?.let { delay(it) }
         withContext(Dispatchers.Main) { Layer.hidden(s, true) }
         delay(90)
         try {
@@ -399,6 +428,7 @@ object AgentScreen {
                         override fun onFailure(code: Int) { cont.resume(null) }
                     })
                 }
+                lastCapture = System.currentTimeMillis()
                 if (b != null) return b
                 if (attempt == 0) delay(1100)   // Android allows about one a second
             }
@@ -409,8 +439,8 @@ object AgentScreen {
     private fun save(s: HandsService, b: Bitmap, name: String): String? = runCatching {
         val dir = Linux(s.applicationContext).hostFile(DIR).apply { mkdirs() }
         dir.listFiles().orEmpty().sortedByDescending { it.lastModified() }.drop(12).forEach { it.delete() }
-        File(dir, "$name.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        "$DIR/$name.png"
+        File(dir, "$name.jpg").outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+        "$DIR/$name.jpg"
     }.getOrNull()
 
     private fun label(c: Canvas, text: String, x: Float, y: Float, size: Float) {
@@ -564,7 +594,7 @@ object AgentScreen {
         if (near >= 3) return Done("Not tapped: that's the 4th tap on ${p.name} and the screen hasn't changed. Look again (with the image), try another way, or ask the user.", false)
         taps.addLast(Tap(p.x, p.y, signature)); while (taps.size > 20) taps.removeFirst()
         // The light flows there first; the tap comes once it has arrived.
-        delay(withContext(Dispatchers.Main) { Layer.moveTo(s, p.x, p.y) } + 140)
+        delay(withContext(Dispatchers.Main) { Layer.moveTo(s, p.x, p.y) } + 20)
         // Clicking the button the numbered thing is inside of is exact, unless that "button" is a whole card or
         // list around several things: then a tap in the thing's middle, where the user would put their thumb.
         val node = pressableAround(p.el?.node)?.takeIf { n ->
@@ -580,7 +610,7 @@ object AgentScreen {
         // Some apps say yes to a click from accessibility and do nothing with it: when nothing changed, a real
         // tap on the thing's middle, as a finger would.
         if (viaNode) {
-            delay(700); read(s)
+            settle(s)
             if (signature == before) {
                 press(s, p.x, p.y, 90)
                 return after(s, "Tapped ${p.name} (the app ignored the first click, so it was tapped again like a finger). The screen now:")
@@ -620,10 +650,10 @@ object AgentScreen {
             var why = ""
             val p = target(s, into) { why = it } ?: return Done(why, false)
             Rules.refuse(s, p.x, p.y, p.el, els)?.let { return Done(it, false) }
-            delay(withContext(Dispatchers.Main) { Layer.moveTo(s, p.x, p.y) } + 140)
+            delay(withContext(Dispatchers.Main) { Layer.moveTo(s, p.x, p.y) } + 20)
             val n = p.el?.node
             if (n?.performAction(AccessibilityNodeInfo.ACTION_FOCUS) != true && n?.performAction(AccessibilityNodeInfo.ACTION_CLICK) != true) press(s, p.x, p.y, 90)
-            delay(350)
+            delay(200)
         }
         val f = s.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return Done("No text field is selected: tap one first, or say which with into.", false)
         Rules.refuseTyping(f)?.let { return Done(it, false) }
@@ -1007,8 +1037,8 @@ object Layer {
         fun glide(x: Float, y: Float): Long {
             begin(x, y)
             val d = kotlin.math.hypot(tx - fx, ty - fy)
-            // Unhurried, like a hand: longer the further it goes, never a jump.
-            dur = if (d < 3 * dp) 0L else (480 + d / dp * 1.4f).toLong().coerceIn(560L, 1300L)
+            // Quick as the action it leads to, still a sweep you can follow, never a jump: a little longer the further it goes.
+            dur = if (d < 3 * dp) 0L else (100 + d / dp * 0.25f).toLong().coerceIn(120L, 260L)
             straight = false
             // A soft arc, to one side and then the other, as a thumb sweeps.
             side = -side
@@ -1029,7 +1059,7 @@ object Layer {
         fun attend(x: Float, y: Float) { glide(x, y); attending = true }
         fun rest() { attending = false }
 
-        fun ring() = run("ring", 620) { ringT = it }
+        fun ring() = run("ring", 260) { ringT = it }
         fun scan(b: List<Rect>) { boxes = b; run("scan", 1100) { scanT = it } }
         fun underline(r: Rect) { under = r; run("line", 1400) { lineT = it } }
 
