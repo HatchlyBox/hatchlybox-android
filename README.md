@@ -28,14 +28,14 @@
 
 <p align="center">
   <sub>Asked to “open Hello World App and play”, the AI helper opens the game it made and plays it on the phone, at real speed.
-  <a href="https://github.com/HatchlyBox/hatchlybox-android/releases/download/v6.4/hatchlybox-demo.mp4">Watch the whole video (1:14)</a>.</sub>
+  The whole video (1:14) is below the picture.</sub>
 </p>
 
 <p align="center">
   <img src="docs/media/agent-plays.gif" alt="An AI helper playing Neon Run, a game it made, on the phone" width="300">
 </p>
 
-
+https://github.com/user-attachments/assets/d24f6618-9ae8-4f4d-b49b-aa635f56983c
 
 <p align="center">
   <img src="docs/media/home.jpg" alt="Hatchlybox home screen with a game made in it" width="220">
