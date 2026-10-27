@@ -1,0 +1,32 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 512 512">
+
+  <defs>
+    <mask id="h-cutout"
+          maskUnits="userSpaceOnUse"
+          x="0" y="0" width="512" height="512">
+      <rect width="512" height="512" fill="white"/>
+
+      <!-- Transparent diagonal -->
+      <path d="M266 229H300L265 279H231Z"
+            fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Navy H -->
+  <g fill="#101828" mask="url(#h-cutout)">
+    <rect x="131" y="144" width="82"
+          height="224" rx="12"/>
+
+    <rect x="299" y="144" width="82"
+          height="224" rx="12"/>
+
+    <path d="M201 230H312V278H201Z"/>
+  </g>
+
+  <!-- Signature mint fold -->
+  <path d="M212 229H266L231 279H212Z"
+        fill="#56DCC9"/>
+
+</svg>

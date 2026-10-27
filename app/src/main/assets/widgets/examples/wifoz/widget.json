@@ -1,0 +1,11 @@
+{
+  "name": "Wifoz",
+  "description": "A tabby cat who lives in the card: sits, loafs, grooms, yawns, walks, runs, rolls over, pounces, climbs and scratches its edges, chases a butterfly, plays with yarn, jumps at a toy on a string and naps, doing more the more room the card gives him. Tap him to pet him; tap anywhere else for a laser dot to chase, or hold and drag to lead it.",
+  "version": 3,
+  "size": "wide",
+  "ui": {
+    "type": "pet",
+    "animal": "cat",
+    "coat": "tabby"
+  }
+}

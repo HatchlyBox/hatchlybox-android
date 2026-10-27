@@ -1,0 +1,7 @@
+{
+  "title": "see it run",
+  "blurb": "the ai helper opens your app on this phone, looks at it, taps through it and fixes crashes",
+  "libs": ["hatchlybox peek"],
+  "ideas": [],
+  "tool": true
+}

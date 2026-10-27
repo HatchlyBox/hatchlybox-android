@@ -1,0 +1,6 @@
+{
+  "name": "Claude",
+  "description": "A terminal running Claude Code, continuing the last conversation in /root",
+  "size": "large",
+  "terminal": { "command": "claude --continue || claude", "title": "claude", "background": "#14110F", "prompt": "orange" }
+}

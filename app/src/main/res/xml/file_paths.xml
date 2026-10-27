@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths><files-path name="artifacts" path="linux/rootfs/root/.cache/hatchlybox/apks/" /><files-path name="backups" path="linux/rootfs/root/Backups/hatchlybox/" /><files-path name="diagnostics" path="diagnostics/" /></paths>

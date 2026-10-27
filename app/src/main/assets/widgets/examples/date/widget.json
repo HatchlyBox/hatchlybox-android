@@ -1,0 +1,153 @@
+{
+  "name": "Today",
+  "description": "The date large, and how far through the year it is as a bar (a small data script does the counting)",
+  "size": "small",
+  "refresh": 3600,
+  "data": "./data.sh",
+  "state": {
+    "day": 1,
+    "days": 365,
+    "left": 364,
+    "week": 1,
+    "pct": 0
+  },
+  "tap": {
+    "open": "phone:calendar"
+  },
+  "ui": {
+    "type": "column",
+    "gap": 2,
+    "children": [
+      {
+        "type": "header",
+        "text": "{now:EEEE}",
+        "icon": "today",
+        "trailing": "week {week}"
+      },
+      {
+        "type": "spacer",
+        "weight": 1
+      },
+      {
+        "type": "text",
+        "text": "{now:d}",
+        "style": "display",
+        "size": 52,
+        "color": "primary"
+      },
+      {
+        "type": "text",
+        "text": "{now:MMMM yyyy}",
+        "style": "title"
+      },
+      {
+        "type": "spacer",
+        "weight": 1
+      },
+      {
+        "type": "progress",
+        "value": "{pct}",
+        "max": 100,
+        "color": "tertiary"
+      },
+      {
+        "type": "text",
+        "text": "{left} days left this year",
+        "style": "caption"
+      },
+      {
+        "type": "text",
+        "text": "Day {day} of {days} \u00b7 week {week}",
+        "style": "caption",
+        "color": "muted",
+        "priority": 3,
+        "lines": 1
+      }
+    ]
+  },
+  "views": [
+    {
+      "when": "tiny",
+      "title": false,
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "text",
+            "text": "{now:EEE}",
+            "style": "label",
+            "color": "muted",
+            "lines": 1
+          },
+          {
+            "type": "text",
+            "text": "{now:d}",
+            "style": "display",
+            "color": "primary",
+            "lines": 1
+          },
+          {
+            "type": "text",
+            "text": "{now:MMM}",
+            "style": "label",
+            "lines": 1
+          }
+        ],
+        "align": "center",
+        "arrange": "center",
+        "gap": 0
+      }
+    },
+    {
+      "when": "wide",
+      "ui": {
+        "type": "row",
+        "children": [
+          {
+            "type": "text",
+            "text": "{now:d}",
+            "style": "display",
+            "size": 52,
+            "color": "primary",
+            "lines": 1
+          },
+          {
+            "type": "column",
+            "children": [
+              {
+                "type": "text",
+                "text": "{now:EEEE}",
+                "style": "title",
+                "lines": 1
+              },
+              {
+                "type": "text",
+                "text": "{now:MMMM yyyy} \u00b7 week {week}",
+                "style": "body",
+                "color": "muted",
+                "lines": 1
+              },
+              {
+                "type": "progress",
+                "value": "{pct}",
+                "max": 100,
+                "color": "tertiary",
+                "priority": 2
+              },
+              {
+                "type": "text",
+                "text": "{left} days left this year",
+                "style": "caption"
+              }
+            ],
+            "gap": 4,
+            "weight": 1
+          }
+        ],
+        "gap": 16,
+        "align": "center"
+      }
+    }
+  ],
+  "version": 3
+}

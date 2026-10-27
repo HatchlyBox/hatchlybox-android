@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Actions (Hands.kt), each asked for when an action first needs it. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+    <queries><intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent></queries>
+    <application
+        android:enableOnBackInvokedCallback="true"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:extractNativeLibs="true"
+        android:networkSecurityConfig="@xml/network_security"
+        android:theme="@style/Theme.Hatchlybox">
+        <!-- Hatchlybox's hands in other apps, when the user switches them on in Android's Accessibility settings. -->
+        <service android:name=".HandsService" android:exported="true" android:label="@string/hands_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/hands_service" />
+        </service>
+        <receiver android:name=".ReminderReceiver" android:exported="false" />
+        <receiver android:name=".AskReceiver" android:exported="false" />
+        <receiver android:name=".ReminderBoot" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <service android:name=".SyncTaskService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name=".ChatTaskService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name=".MakerService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name=".SetupService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name=".TermSignInService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="com.hatchlybox.app.files" android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- A browser's "Add to Home screen" while Hatchlybox is the home app. -->
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+            <!-- A sync code's QR code, scanned with the camera: hatchlybox://sync/<code>. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="hatchlybox" android:host="sync" />
+            </intent-filter>
+        </activity>
+        <!-- In a browser's Share menu: adds the page to the home screen as a web app. -->
+        <activity-alias
+            android:name=".AddWebApp"
+            android:targetActivity=".MainActivity"
+            android:label="@string/add_web_app"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
+        <!-- Launcher mode: switched on in Settings, then Hatchlybox can be chosen as the home app. -->
+        <activity-alias
+            android:name=".HomeAlias"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+    </application>
+</manifest>

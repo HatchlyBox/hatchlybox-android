@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hatchlybox's hands (HandsService): it reads windows only while an action runs (or an AI helper the user allowed
+     uses the screen), and presses, taps and types for it. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagInputMethodEditor"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"
+    android:canTakeScreenshot="true"
+    android:notificationTimeout="200"
+    android:description="@string/hands_description" />

@@ -1,0 +1,6 @@
+{
+  "title": "design",
+  "blurb": "a finished look: its own palette (or your wallpaper colours), dark mode, clean spacing, empty states, landscape",
+  "libs": ["material 3"],
+  "ideas": ["a beautiful daily planner that follows my wallpaper colours", "a minimalist note app that looks great in landscape"]
+}

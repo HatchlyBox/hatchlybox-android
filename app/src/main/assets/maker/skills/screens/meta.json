@@ -1,0 +1,6 @@
+{
+  "title": "screens",
+  "blurb": "several pages: a list and its details, tabs, settings, a back button",
+  "libs": ["navigation", "viewmodel"],
+  "ideas": ["a recipe book with a page for each recipe", "a workout log with history and settings tabs"]
+}

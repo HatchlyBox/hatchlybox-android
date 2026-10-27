@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# win-shortcut <name> <program> [arguments]: a Start menu shortcut for a Windows program, made from WSL (Hatchlybox on
+# Windows), in $HATCHLYBOX_WIN_MENU; its path goes to $HATCHLYBOX_MANIFEST when set (so uninstalling removes it).
+set -euo pipefail
+name=$1 target=$2 args=${3:-}
+[ -n "${HATCHLYBOX_WIN_MENU:-}" ] || { echo "win-shortcut: HATCHLYBOX_WIN_MENU isn't set (Hatchlybox sets it on Windows)" >&2; exit 1; }
+case $name in */*|*\\*|.*|"") echo "win-shortcut: a plain name, please" >&2; exit 1 ;; esac
+mkdir -p "$HATCHLYBOX_WIN_MENU"
+lnk="$HATCHLYBOX_WIN_MENU/$name.lnk"
+# PowerShell single-quoted strings: a quote is doubled.
+ps() { local s=$1; printf "'%s'" "${s//\'/\'\'}"; }
+w() { wslpath -w "$1"; }
+powershell.exe -NoProfile -NonInteractive -Command "\$s = (New-Object -ComObject WScript.Shell).CreateShortcut($(ps "$(w "$lnk")")); \$s.TargetPath = $(ps "$(w "$target")"); \$s.Arguments = $(ps "$args"); \$s.WorkingDirectory = $(ps "$(w "$(dirname "$target")")"); \$s.Save()" >/dev/null
+[ -z "${HATCHLYBOX_MANIFEST:-}" ] || echo "$lnk" >> "$HATCHLYBOX_MANIFEST"

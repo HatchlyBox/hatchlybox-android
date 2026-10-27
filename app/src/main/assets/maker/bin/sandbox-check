@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# sandbox-check [--kind|--hint]: whether agents and builds can be isolated here. It verifies enforcement, not just
+# the presence of an executable (proot provides a bwrap stub). Exit 0: isolation works.
+#   --kind  prints the sandbox that works here: bwrap (Linux, WSL), seatbelt (macOS's sandbox-exec), or none
+#   --hint  prints what would make it work (nothing when it does)
+set -uo pipefail
+_self=${BASH_SOURCE[0]}; while [ -L "$_self" ]; do _l=$(readlink "$_self"); case $_l in /*) _self=$_l ;; *) _self=$(dirname "$_self")/$_l ;; esac; done
+source "$(dirname "$_self")/paths.sh"
+cache=$CACHE
+os=${HATCHLYBOX_TEST_OS:-$(uname -s)}
+mkdir -p "$cache"
+p=$(mktemp -d "$cache/.sandbox-probe.XXXX") || exit 1
+trap 'rm -rf "$p"' EXIT
+printf sentinel > "$p/sentinel"
+
+# kind: the sandbox this system has (whether or not it enforces).
+if [ "$os" = Darwin ]; then kind=seatbelt; command -v sandbox-exec >/dev/null 2>&1 || kind=none
+else kind=bwrap; command -v bwrap >/dev/null 2>&1 || kind=none; fi
+
+probe() {
+  case $kind in
+    # The file must vanish under a tmpfs: a stub that drops options leaves it there.
+    bwrap) bwrap --ro-bind / / --tmpfs "$p" -- /usr/bin/test ! -e "$p/sentinel" >/dev/null 2>&1 ;;
+    # Reading it must be refused.
+    seatbelt) ! sandbox-exec -p "(version 1)(allow default)(deny file-read* (literal \"$(realpath "$p")/sentinel\"))" /bin/cat "$p/sentinel" >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+
+case ${1:-} in
+  --kind) if probe; then echo "$kind"; else echo none; fi ;;
+  --hint)
+    probe && exit 0
+    # The phone (Hatchlybox) runs under proot.
+    HOST=""; [ -f "$DATA/platform.env" ] && HOST=$(. "$DATA/platform.env"; echo "${HOST:-}")
+    if [ "$HOST" = hatchlybox ]; then
+      echo "this phone's Linux runs under proot, which can't isolate programs"
+    elif [ "$os" = Darwin ]; then
+      echo "sandbox-exec is missing or refused to start (it is part of macOS)"
+    elif [ "$kind" = none ]; then
+      if command -v apt-get >/dev/null 2>&1; then echo "install bubblewrap: sudo apt install bubblewrap"
+      elif command -v dnf >/dev/null 2>&1; then echo "install bubblewrap: sudo dnf install bubblewrap"
+      elif command -v pacman >/dev/null 2>&1; then echo "install bubblewrap: sudo pacman -S bubblewrap"
+      elif command -v zypper >/dev/null 2>&1; then echo "install bubblewrap: sudo zypper install bubblewrap"
+      elif command -v apk >/dev/null 2>&1; then echo "install bubblewrap: sudo apk add bubblewrap"
+      else echo "install bubblewrap (bwrap) from your distribution"; fi
+    else
+      # Ubuntu 24.04 and others restrict unprivileged user namespaces; the distribution's bwrap has a profile for it.
+      echo "bubblewrap can't create a sandbox here: user namespaces are off. Use your distribution's bubblewrap package (it is allowed by AppArmor), or enable kernel.unprivileged_userns_clone"
+    fi
+    exit 1 ;;
+  *) probe ;;
+esac

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- The app icon and the favicon: the white mark on a navy rounded square. -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#101828"/>
+  <defs>
+    <!-- Transparent diagonal cutout -->
+    <mask id="h-white-cut"
+          maskUnits="userSpaceOnUse"
+          x="0" y="0"
+          width="512" height="512">
+
+      <rect width="512" height="512"
+            fill="white"/>
+
+      <path d="M266 229H300L265 279H231Z"
+            fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- White H monogram -->
+  <g fill="#F8FAFC"
+     mask="url(#h-white-cut)">
+
+    <!-- Left pillar -->
+    <rect x="131" y="144"
+          width="82" height="224"
+          rx="12"/>
+
+    <!-- Right pillar -->
+    <rect x="299" y="144"
+          width="82" height="224"
+          rx="12"/>
+
+    <!-- Center connection -->
+    <path d="M201 230H312V278H201Z"/>
+  </g>
+
+  <!-- Signature mint diagonal fold -->
+  <path d="M212 229H266L231 279H212Z"
+        fill="#56DCC9"/>
+</svg>

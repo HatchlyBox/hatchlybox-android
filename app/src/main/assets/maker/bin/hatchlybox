@@ -1,0 +1,2911 @@
+#!/usr/bin/env bash
+# hatchlybox (Hatchlybox Engine): describe an app or game, let a coding agent build it, install it where you are.
+#
+#   hatchlybox new <claude|codex|opencode> <idea...>     scaffold, agent builds, install
+#   hatchlybox create <system> <agent> <idea...>         a new creation, first for android, web, linux, windows…
+#   hatchlybox create auto <agent> <idea...> | route <idea>   the format chosen for it (web unless it needs more) | which
+#   hatchlybox wrap <slug> | native <slug> <agent>       its web version as a phone app (no agent) | that app made fully native
+#   hatchlybox make <slug> <system> <agent> [request]    that creation for a system: made, changed, or brought up to date
+#   hatchlybox change <slug> <agent> <request...>        agent edits an existing app, rebuild, install
+#   hatchlybox accept | discard <slug>                   keep or drop a change (each waits on its own branch)
+#   hatchlybox retry <slug> [agent]                      continue building an app with the agent that made it
+#   hatchlybox again [agent]                             the last job once more (a Play job to the same track)
+#   hatchlybox build | install | download <slug>         just that step (download: via the browser)
+#   hatchlybox uninstall <slug>                          remove the app from the phone
+#   hatchlybox remove <slug> <system>                    that version out of the library (uninstalled, kept in the trash)
+#   hatchlybox here install|uninstall|open <slug> <system>   that version on this computer (Linux, Omarchy, macOS)
+#   hatchlybox delete <slug>                             delete the app's project and APK
+#   hatchlybox pair <port|host:port> <code> | connect <port|host:port>   wireless debugging (once per phone)
+#   hatchlybox adb                                       prints adb connection state
+#   hatchlybox peek [open|look|tap|type|swipe|back|log]    for agents: see the app run (the see-it-run skill)
+#   hatchlybox skills | skill <name> on|off              the skills library (for the front end) | switch one off or on
+#   hatchlybox cancel | list | creations               stop the job | the apps | every creation with its systems (JSON)
+#   hatchlybox sync send | receive <code>              sync the library with another device (a code pairs them)
+#   hatchlybox sync serve | devices | forget <id>        sync by itself with paired devices | list them | unpair one
+#   hatchlybox sync resolve <slug> mine|theirs           changed on both devices: keep this one's or the other's
+#   hatchlybox setup | setup-state                       fetch the Android SDK and Gradle, then a test build | its progress (JSON)
+#   hatchlybox license accept|check android-sdk          record that the person accepted Google's SDK licence (setup needs it to download)
+#   hatchlybox godot                                     install or repair Godot (the game engine, for agents)
+#   hatchlybox doctor                                    prints what's missing to build (nothing = ready)
+#   hatchlybox toolchain | qr <text>                     the Android toolchain here (JSON) | a link as a QR code
+#   hatchlybox agents [status | login <agent>] | version   the installed agents (JSON: signed in, models; sign in) | version
+#   hatchlybox desktop [--no-open|stop]                  the desktop front end in the browser (Linux, macOS, Windows/WSL)
+#   hatchlybox isolation | renderer                      isolated, compatible or blocked | the game renderer: ready or what to install
+#   hatchlybox set <key> <value> | settings             change a setting (mode, agent, fixRounds, agentTimeout) | show them
+#
+# GitHub (optional):
+#   hatchlybox github status | auto on|off              gh's logins on this phone | new apps on GitHub
+#   hatchlybox github use <login> | logout <login> | add  account for new apps | stop syncing it | sign in another
+#   hatchlybox github resume <login>                    sync that account's apps again (new apps keep going where they go)
+#   hatchlybox github signout <login>                   sign this phone out of that account (gh forgets its login)
+#   hatchlybox github publish <slug> [private|public]    a repo for the app (private unless asked)
+#   hatchlybox github visibility <slug> private|public   changes become pull requests once it has one
+#   hatchlybox github check <slug> | sync                look for private data | follow PRs merged or closed there
+#
+# Google Play (see "play" below):
+#   hatchlybox play connect | key <file> | status | disconnect   the service account that uploads (in a terminal)
+#   hatchlybox lock [passwd|off]                         optional: encrypt the Play key and upload keys with a passphrase
+#   hatchlybox unlock                                    finish a job waiting for it (sign, upload), in a terminal
+#   hatchlybox play prepare <slug> [agent] [listing]     listing, API 36, signed .aab, graphics (a job)
+#   hatchlybox play upload <slug> <internal|closed|production>    send it all to a Play track (a job)
+#   hatchlybox play check <slug>                         is the app on Play yet (first upload done by hand)
+#   hatchlybox play aab <slug> | backup <slug> < passphrase   the .aab / the encrypted upload key, via the browser
+#   hatchlybox play restore <slug> <file> < passphrase   the upload key back from such a backup
+#   hatchlybox play testers <slug> <group email>         the closed test's Google Group
+#   hatchlybox play community | ask <slug>               the tester exchange: fetch its list | list this app
+#   hatchlybox play testing <package> on|off             mark a community app as one this phone tests
+#   hatchlybox play set <slug> testers <n> | production <yes|no>   closed-test progress, by hand
+#   hatchlybox play set personal <yes|no> | contact <email>         account facts
+#
+# Hatchlybox Engine: the same on every platform. What differs per platform (ports, how agents run, what the
+# front end offers) is in $DATA/platform.env, from platforms/<name>/ (`hatchlybox platform` prints it).
+#
+# Folders (bin/paths.sh): $DATA holds this script, the app template, AGENTS.md, the Java helpers, the settings and
+# the Play upload keys ($DATA/keys); $CACHE the state the front end shows: job.json (current job), apps.json and
+# creations.json (the library), log.txt (current job's log), setup.json, setup.log and play.json (the Play
+# account). Android versions live in $APPS/<slug>, the other systems' in $PORTS/<slug>/<system>.
+set -uo pipefail
+# Everything this writes (state, logs, keys, apps) is for this user only.
+umask 077
+# Folders and shell tools, the same on every system (paths.sh, compat.sh: beside this script, through any symlink).
+_self=${BASH_SOURCE[0]}; while [ -L "$_self" ]; do _l=$(readlink "$_self"); case $_l in /*) _self=$_l ;; *) _self=$(dirname "$_self")/$_l ;; esac; done
+source "$(dirname "$_self")/paths.sh"; source "$(dirname "$_self")/compat.sh"; source "$(dirname "$_self")/android.sh"; unset _self _l
+
+ENGINE="Hatchlybox Engine"
+VERSION=37
+# New creations' Android IDs: com.hatchlybox.<name> ("my-app" → com.hatchlybox.my_app). Creations made
+# earlier keep theirs: Android and Google Play know an app by it.
+ID_PREFIX=com.hatchlybox
+# Bumped only when the toolchain changes, so a script update doesn't redo the test build.
+TOOLCHAIN=3
+# Google Play takes new apps and updates only when they target this API level.
+PLATFORM=android-36
+# DATA, APPS, CACHE, PORTS (versions for other systems: $PORTS/<slug>/<system>) and BACKUPS: see paths.sh.
+JOB=$CACHE/job.json
+LOG=$CACHE/log.txt
+SETUP=$CACHE/setup.json
+SLOG=$CACHE/setup.log
+# The platform's settings (platform.env); without one, a plain Linux computer's.
+HOST=linux HOST_NAME="Linux" SERVE_PORT=8765 OPENCODE_ARGS="" CAPABILITIES="" INSTALLS="" ISOLATION=required
+# Delivery to Android (platform.env): ADB_SELF=1, the phone debugs itself (adb at 127.0.0.1); SERVE_LAN=1, built
+# APKs are offered to phones on the same Wi-Fi (a computer), not only to this device's own browser.
+ADB_SELF=0 SERVE_LAN=1
+[ -f "$DATA/platform.env" ] && . "$DATA/platform.env"
+# A Linux computer running Omarchy installs Omarchy versions too.
+[ "$HOST" = linux ] && [[ " $INSTALLS " == *" linux "* ]] && [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy" ] && INSTALLS="$INSTALLS omarchy"
+FIX_ROUNDS=3
+AGENT_TIMEOUT=${AGENT_TIMEOUT:-45m}   # kill an agent that hangs, so a job can't stick forever
+
+# settings.json: the user's choices (the front end's settings page, or `hatchlybox set`). Missing keys are defaults.
+SETTINGS=$DATA/settings.json
+setting() { jq -r --arg k "$1" '.[$k] // empty' "$SETTINGS" 2>/dev/null; }
+[[ $(setting fixRounds) =~ ^[0-9]+$ ]] && FIX_ROUNDS=$(setting fixRounds)
+[[ $(setting agentTimeout) =~ ^[0-9]+$ ]] && AGENT_TIMEOUT="$(setting agentTimeout)m"
+
+# isolation_policy: required or compatible (the setting, else the platform's default).
+isolation_policy() { jq -r --arg d "${ISOLATION:-compatible}" '.agentIsolation // $d' "$SETTINGS" 2>/dev/null || echo "${ISOLATION:-compatible}"; }
+
+# set <key> <value>: change one setting, checked against what it may be.
+set_cmd() {
+  local k=${1:-} v=${2:-} ok=""
+  case $k in
+    mode) [[ $v =~ ^(simple|advanced)$ ]] && ok=1 ;;
+    agent) [[ $v =~ ^(claude|codex|opencode)$ ]] && ok=1 ;;
+    agentIsolation) [[ $v =~ ^(required|compatible)$ ]] && ok=1 ;;
+    communityRepo) [[ -z $v || $v =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] && ok=1 ;;
+    device) [[ $v =~ ^[a-zA-Z0-9._:-]+$ ]] && ok=1 ;;
+    # The sync relay (Relay.java) for devices on different networks, host:port; empty: none.
+    relay) [[ -z $v || $v =~ ^[A-Za-z0-9.-]+:[0-9]{1,5}$ ]] && ok=1 ;;
+    changes|undoDepth) echo "changes are always reviewed; undoDepth is retired" >&2; return 1 ;;
+    fixRounds) [[ $v =~ ^([0-9]|10)$ ]] && ok=1 ;;
+    # When an AI helper reaches its usage limit, another ready one carries on (on), or the job stops (off).
+    fallback) [[ $v =~ ^(on|off)$ ]] && ok=1 ;;
+    agentTimeout) [[ $v =~ ^[0-9]+$ ]] && [ "$v" -ge 10 ] && [ "$v" -le 120 ] && ok=1 ;;
+    # The model each agent runs with (claude: opus, sonnet…; codex: gpt-…; opencode: provider/model); empty: its own default.
+    claudeModel|codexModel|opencodeModel) re='^[]A-Za-z0-9._:/@#[-]{0,120}$'; [[ $v =~ $re ]] && ok=1 ;;
+    *) echo "usage: hatchlybox set mode simple|advanced | agent <name> | fixRounds 0-10 | agentTimeout 10-120 | <agent>Model <model>" >&2; return 1 ;;
+  esac
+  [ -n "$ok" ] || { echo "$k can't be $v" >&2; return 1; }
+  json_edit "$SETTINGS" --arg k "$k" --arg v "$v" '.[$k] = (if $k == "relay" or ($k | endswith("Model")) then $v else ($v | tonumber? // $v) end)' || return 1
+  echo "$k: $v"
+}
+mkdir -p "$APPS" "$CACHE/apks" "$CACHE/jobs"
+source "$DATA/bin/reliability.sh"
+source "$DATA/bin/poll.sh"
+
+# setup records the SDK it found or installed; until then, the one it would install.
+ANDROID_HOME_ORIG=${ANDROID_HOME:-}
+SDK=$(cat "$DATA/sdk.path" 2>/dev/null)
+export ANDROID_HOME=${SDK:-$DATA/sdk} ANDROID_SDK_ROOT=${SDK:-$DATA/sdk}
+# Java 17 wherever this system keeps it (android.sh); setup says how to install it when there is none.
+export JAVA_HOME=$(android_java_home || echo /usr/lib/jvm/java-17-openjdk)
+# Agents installed with mise aren't on the front end's PATH: its install dirs, ~/.local/bin and its shims go ahead of
+# the system folders. mise's install dirs first: Omarchy's ~/.local/bin/claude (codex, opencode) is a wrapper running
+# `mise x claude -- claude`, and with mise's install dir on the PATH behind ~/.local/bin, that finds the wrapper again,
+# forever; the sandbox (isolate) also needs the agent's own program, not a wrapper around mise.
+_p=$JAVA_HOME/bin
+# (npm-backed tools, OpenCode's included, keep their commands in node_modules/.bin.)
+for d in "$HOME"/.local/share/mise/installs/*/latest "$HOME"/.local/share/mise/installs/*/latest/bin "$HOME"/.local/share/mise/installs/*/latest/node_modules/.bin; do
+  [ -d "$d" ] && _p=$_p:$d
+done
+export PATH="$_p:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"; unset _p
+# /usr/local/bin where a front end's PATH lacks it: after the folders it was given, which keep their order.
+case ":$PATH:" in *:/usr/local/bin:*) ;; *) PATH=$PATH:/usr/local/bin ;; esac
+
+now() { date +%s; }
+
+# job <phase> <msg>: update job.json, keeping the other fields. .at is the last working phase,
+# so the front end can show where a failed or stopped job got to.
+# apps.json for the front end: every app, newest first, each with .state, the one place its status is
+# worked out: {key, word, detail, tone, step, actions}. word and detail are plain words for the front end;
+# tone its colour; step the stage it belongs to (try|improve|publish); actions what can be done now,
+# the first one the main action. A running job is the front end's to overlay. .next {step, state} is kept
+# for front ends that read it. An install by browser can't be seen from here: "downloaded" waits for the user to
+# say it's installed (hatchlybox installed <slug>). "changed": the code was edited after the last build.
+list_apps_impl() {
+  local tmp m at changed=() ; tmp=$(mktemp "$CACHE/.apps.XXXX")
+  # Every creation has its id (bin/sync.sh) before it's listed.
+  ensure_ids
+  # Apps whose code was edited after their last build, in a terminal or by hand (not while a change waits).
+  for m in "$APPS"/*/.hatchlybox.json; do
+    [ -f "$m" ] || continue
+    at=$(jq -r 'select(.status != "building" and .pending == null) | .artifacts.apk.at // empty' "$m")
+    [ -n "$at" ] && source_changed "$(basename "$(dirname "$m")")" "$at" && changed+=("$(basename "$(dirname "$m")")")
+  done
+  # (With no apps the glob stays literal: "[ ! -f ] ||" keeps the loop's status 0 under pipefail.)
+  for m in "$APPS"/*/.hatchlybox.json; do [ ! -f "$m" ] || cat "$m"; done \
+    | jq -sc --argjson computer "$([ "$HOST" = hatchlybox ] && echo false || echo true)" --argjson changed "$(printf '%s\n' "${changed[@]}" | jq -Rsc 'split("\n") | map(select(. != ""))')" 'def st(k; w; d; t; s; a): {key: k, word: w, detail: d, tone: t, step: s, actions: a};
+        # On a computer an Android version is for the phone: the words say so (the phone app keeps its own).
+        def for_computer: if $computer | not then . else
+          ({"ready": ["ready for your phone", "built: send it to your phone with a code to scan, or install it over wireless debugging (Phone page)."],
+            "installed": ["on your phone", "installed on your phone. describe a change to improve it."],
+            "downloaded": ["sent to your phone", "the app file went to your phone: install it there, then tell hatchlybox it is installed."],
+            "update": ["update ready for your phone", "a newer version is built: send it to your phone or install it over wireless debugging."],
+            "blocked": ["can'"'"'t install on your phone", "a copy signed differently (from google play?) is on your phone: uninstalling it there can delete its saved data."]}[.key]) as $w
+          | if $w then .word = $w[0] | .detail = $w[1] else . end end;
+        def app_state:
+          (.outcomes // {}) as $o | ((.play.tracks // {}) | keys) as $tracks
+          | (.artifacts.apk.sha256 // null) as $apk | (.installedArtifact.sha256 // null) as $on
+          | if .status == "exported" and .apk == null then st("exported"; "not built for android"; "made for this computer: its android version builds once android building is set up here."; "yellow"; "try"; ["android-setup"])
+          elif .status == "building" then st("stopped"; "stopped"; "it stopped before finishing. try again picks up where it left off."; "red"; "try"; ["retry", "log"])
+          elif .pending != null and .pending.built == true then st("review"; "change to check"; "a change is built. try it, then keep it or undo it."; "cyan"; "improve"; ["review", "install"])
+          elif .pending != null then st("change-failed"; "change didn'"'"'t build"; "the last change didn'"'"'t build. try again lets the ai helper fix it, or undo it."; "red"; "improve"; ["retry", "review", "log"])
+          elif .status == "failed" or .status == "cancelled" or .status == "new" then st("failed"; "needs a fix"; "the last build failed. try again lets the ai helper fix it."; "red"; "try"; ["retry", "log"])
+          elif .apk == null or $o.build == "needs-rebuild" or $o.install == "stale" then st("rebuild"; "needs a rebuild"; "the app file is missing or older than its code: rebuild it."; "yellow"; "try"; ["rebuild", "log"])
+          elif (.slug as $s | $changed | index($s)) then st("changed"; "code changed"; "its code changed after the last build (in a terminal?). rebuild it to try the new version."; "yellow"; "try"; ["rebuild"] + (if .status == "installed" then ["open"] else [] end))
+          elif ($tracks | index("production")) then st("live"; "live on google play"; "everyone can install it from google play."; "green"; "publish"; ["open", "publish"])
+          elif ($tracks | length) > 0 then st("testers"; "with testers"; "on google play for your testers."; "green"; "publish"; ["open", "publish"])
+          elif $o.install == "signature-conflict" then st("blocked"; "can'"'"'t install"; "a copy signed differently (from google play?) is on the phone. recover the matching signing key or export the installed app’s data before choosing uninstall. Uninstall can delete its saved data."; "red"; "try"; ["install", "download"])
+          elif $o.install == "download-offered" then st("downloaded"; "finish installing"; "the app file went to your browser. open it from your downloads to install it, then tap it'"'"'s installed."; "yellow"; "try"; ["confirm", "install", "open"])
+          elif .status == "installed" and ($o.runtime == "crashed" or $o.runtime == "launch-failed") then st("crashed"; "crashes on start"; "it installed but closed straight away. ask the ai helper to fix it."; "red"; "improve"; ["fix", "log", "open"])
+          elif $on != null and $apk != null and $on != $apk then st("update"; "update ready"; "a newer version is built but not on the phone yet."; "yellow"; "try"; ["install", "open"])
+          elif .status == "installed" then st("installed"; "installed"; (if $o.install == "verified" then "on your phone. open it, or describe a change in improve." else "you said it'"'"'s installed. open it, or describe a change in improve." end); "green"; "improve"; ["open", "improve"])
+          # Before 2.17.5 a browser download counted as installed: keep those apps as they were.
+          elif .downloaded != null then st("installed"; "installed"; "downloaded in your browser. open it, or describe a change in improve."; "green"; "improve"; ["open", "improve"])
+          else st("ready"; "ready to install"; "built and ready to put on this phone."; "yellow"; "try"; ["install", "download"]) end;
+        map((app_state | for_computer) as $s | . + {state: $s, next: {step: $s.step, state: (
+          {"stopped": "stopped", "review": "review", "change-failed": "failed", "failed": "failed", "rebuild": "failed", "changed": "ready",
+           "live": "live", "testers": "testers", "blocked": "ready", "crashed": "done", "update": "ready",
+           "installed": "done", "downloaded": "ready", "ready": "ready"}[$s.key])}}) | sort_by(-.updated)' > "$tmp" && mv "$tmp" "$CACHE/apps.json" || rm -f "$tmp"
+  creations_index
+  skills_index
+}
+
+# creations_index: the library as creations, one entry each, whatever systems it's made for (creations.json).
+# systems.android comes from apps.json (its state's key and word); every other system from $PORTS/<slug>/<system>
+# (.port.json; built once the agent left an export/ folder). "here": this platform installs that system
+# (INSTALLS in platform.env), so a front end offers Install/Update/Open for it and Export for the others.
+# A creation made only for another system has no android entry.
+creations_index() {
+  local tmp d ports; tmp=$(mktemp "$CACHE/.creations.XXXX")
+  ports=$(for d in "$PORTS"/*/*/; do
+      [ -d "$d" ] || continue
+      jq -nc --arg slug "$(basename "$(dirname "$d")")" --arg sys "$(basename "$d")" \
+        --argjson built "$([ -d "$d/export" ] && echo true || echo false)" --argjson t "$(file_mtime "$d")" \
+        --argjson installer "$([ -f "$d/export/install.sh" ] && echo true || echo false)" \
+        --argjson meta "$(jq -c 'if type == "object" then . else {} end' "$d/.port.json" 2>/dev/null || echo '{}')" \
+        '{slug: $slug, system: $sys, built: $built, agent: ($meta.agent // null), created: ($meta.created // $t), idea: ($meta.idea // null),
+          label: ($meta.label // null), id: ($meta.id // null), content: ($meta.content // $meta.changed // $meta.created // $t), finished: (($meta.changed // null) != null),
+          installed: ($meta.installed.content // null), installer: $installer}'
+    done | jq -sc .)
+  jq -c --argjson ports "${ports:-[]}" --arg here "$INSTALLS" --argjson job "$(jq -c . "$CACHE/job.json" 2>/dev/null || echo '{}')" '
+    ($here | split(" ") | map(select(. != ""))) as $here
+    | def here($s): ($here | index($s)) != null;
+    # The version a job is making right now.
+    def working($p): $job.kind == "port" and $job.slug == $p.slug and $job.arg == $p.system
+      and ($job.phase | IN("queued","agent","checking","building","fixing","installing","interrupted"));
+    (map({key: .slug, value: {slug, id: (.id // null), conflict: (.sync.conflict // null), label: (.label // .slug), icon: (.icon // null), created: (.created // 0), updated: (.updated // 0),
+        systems: {android: {state: .state.key, word: .state.word, built: (.apk != null), here: here("android"), wrapped: (.wrapped != null),
+                            content: (.content // .history[-1].t // .created // 0)}}}}) | from_entries) as $apps
+    | reduce $ports[] as $p ($apps;
+        .[$p.slug] |= ((. // {slug: $p.slug, id: $p.id, label: ($p.label // ($p.slug | gsub("-"; " ") | (.[:1] | ascii_upcase) + .[1:])), idea: $p.idea,
+                              icon: null, created: $p.created, updated: $p.created, systems: {}})
+          | .systems[$p.system] = {built: $p.built, agent: $p.agent, created: $p.created, here: here($p.system), content: $p.content,
+                                   installed: ($p.installed != null), update: ($p.installed != null and $p.installed < $p.content),
+                                   word: (if working($p) then "being made" elif ($p.finished | not) then "not finished"
+                                          elif here($p.system) and $p.installed != null then (if $p.installed < $p.content then "update ready" else "installed" end)
+                                          elif here($p.system) and $p.installer then "ready to install"
+                                          elif $p.built then (if $p.system == "web" then "ready to open" else "ready to export" end) else "source only" end)}
+          | .updated = ([.updated, $p.created, $p.content] | max)))
+    # Older: another version has content changed after this one (made or changed later, not just copied).
+    | map(([.systems | to_entries[] | {k: .key, c: (.value.content // 0)}] | max_by(.c)) as $new
+        | .systems |= with_entries(if (.value.content // 0) < $new.c then .value.older = $new.k else . end))
+    | [.[]] | sort_by(-.updated)' "$CACHE/apps.json" > "$tmp" && mv "$tmp" "$CACHE/creations.json" || rm -f "$tmp"
+}
+
+# meta <slug> <jq filter> [args...]: edit an app's .hatchlybox.json.
+adb_device() {
+  adb devices 2>/dev/null | awk 'NR>1 && $2=="device" {print $1; exit}'
+}
+
+# Reconnect after a reboot: the last address that worked, then whatever mDNS advertises. A phone debugging itself
+# finds its own port there (connected at 127.0.0.1); a computer, a phone on the network at the address it gives.
+# Devices on USB need none of this: adb sees them at once.
+adb_reconnect() {
+  [ -n "$(adb_device)" ] && return 0
+  local last; last=$(adb_addr "$(cat "$CACHE/adb-port" 2>/dev/null)")
+  [ -n "$last" ] && timeout 4 adb connect "$last" >/dev/null 2>&1
+  [ -n "$(adb_device)" ] && return 0
+  local svc to; svc=$(timeout 4 adb mdns services 2>/dev/null | awk '/_adb-tls-connect/ {print $NF; exit}')
+  if [ -n "$svc" ]; then
+    if [ "$ADB_SELF" = 1 ]; then to=${svc##*:}; else to=$svc; fi
+    timeout 4 adb connect "$(adb_addr "$to")" >/dev/null 2>&1 && [ -n "$(adb_device)" ] && echo "$to" > "$CACHE/adb-port"
+  fi
+  [ -n "$(adb_device)" ]
+}
+
+adb_state() {
+  adb_reconnect
+  local d; d=$(adb_device)
+  if [ -n "$d" ]; then echo "connected $d"; else echo "offline"; fi
+}
+
+# require_disk <existing-directory> <minimum-KiB>: reject before changing or downloading files.
+require_disk() {
+  local available
+  available=$(df -Pk "$1" 2>/dev/null | awk 'NR == 2 {print $4}')
+  case "$available" in ''|*[!0-9]*) echo "Cannot check free storage. Open Tasks and storage before retrying." >&2; return 1 ;; esac
+  [ "$available" -ge "$2" ] || { echo "Not enough free storage: need at least $(( $2 / 1024 )) MiB. Free generated files in Tasks and storage, then retry. Existing projects were kept." >&2; return 1; }
+}
+
+do_build_impl() {
+  local slug=$1 dir="$APPS/$1" rc=0 label
+  local start; start=$(now)
+  require_disk "$dir" 524288 || return 1
+  reap_orphans
+  if is_godot "$dir"; then
+    godot_build "$slug" || rc=$?
+  else
+    echo "== gradle assembleRelease" >> "$LOG"
+    # A daemon left idle holds ~1.5 GB, which makes Android more likely to kill the phone app's processes.
+    ( cd "$dir" && isolated build "$dir" timeout 30m ./gradlew --console=plain -q -Dorg.gradle.daemon.idletimeout=600000 assembleRelease ) >> "$LOG" 2> "$CACHE/build-err.txt" || rc=$?
+    cat "$CACHE/build-err.txt" >> "$LOG"
+  fi
+  if [ $rc -eq 0 ]; then
+    local apk; apk=$(ls -t "$dir"/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+    [ -n "$apk" ] || return 1
+    cp "$apk" "$CACHE/apks/$slug.apk.new" && mv "$CACHE/apks/$slug.apk.new" "$CACHE/apks/$slug.apk" || return 1
+    if is_godot "$dir"; then
+      label=$(sed -n 's/^config\/name="\(.*\)"$/\1/p' "$dir/godot/project.godot" | head -1)
+      meta "$slug" '.pkgNamed=true'
+      app_icon "$slug"
+    else
+      app_icon "$slug"
+      label=$(sed -n 's:.*name="app_name"[^>]*>\(.*\)</string>.*:\1:p' "$dir/app/src/main/res/values/strings.xml" | head -1)
+    fi
+    learn_visual "$slug"
+    # How long it took: the front end's progress bar for the next build of this app.
+    meta "$slug" '.apk=$a | .label=(($l | select(. != "")) // .label) | .built=$t | .updated=$t | .status="built" | .buildSecs=($t - $s)' \
+      --arg a "$CACHE/apks/$slug.apk" --arg l "$label" --argjson t "$(now)" --argjson s "$start"
+  fi
+  return $rc
+}
+
+# ---- godot: the game engine, for apps that need one (the godot skill) ----
+#
+# An app with godot/project.godot is a Godot project: the build exports it with Godot's Android template
+# (no Gradle) to app/build/outputs/apk/release, where install and peek find it. The engine is installed
+# after setup, in the background, or by the first Godot build.
+
+GODOT_VER=4.7.2
+GODOT_REL=https://github.com/godotengine/godot/releases/download/$GODOT_VER-stable
+GODOT_SHA=5dd0d86405cf7e8adf79fb6377b38ba682a2846cb378ffe5364f38c01ad29b9d
+GODOT_APK_SHA=6d1bb2cfa126a1b1c87e064a35b3cbd181bef0ec784dec1efd1d64dffa8be6cb
+# The computers' editors, pinned by the release's SHA512-SUMS.txt.
+GODOT_X86_SHA512=9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+GODOT_MAC_SHA512=38aa16e5bba2083941fc5b3e54be0089bd4cc35e32415f5b9fd9a8a6a7b9818255d44532ea8ef94b5aef56c4b407c2d634fa4f657e4ebe681ebbf59b7bac69ca
+# Godot's own folders for templates and editor settings: XDG's on Linux (the phones: ~/.local/share, ~/.config),
+# ~/Library/Application Support/Godot on a Mac (both in one).
+if [ "$(android_os)" = macos ]; then GODOT_DATA="$HOME/Library/Application Support/Godot" GODOT_CONFIG="$HOME/Library/Application Support/Godot"
+else GODOT_DATA=${XDG_DATA_HOME:-$HOME/.local/share}/godot GODOT_CONFIG=${XDG_CONFIG_HOME:-$HOME/.config}/godot; fi
+GODOT_TEMPLATES=$GODOT_DATA/export_templates/$GODOT_VER.stable
+# Godot's official build needs glibc: on musl (Hatchlybox's Alpine) it runs through this private copy.
+GLIBC_URL=https://snapshot.debian.org/archive/debian/20260101T145718Z/pool/main/g/glibc/libc6_2.41-12%2Bdeb13u1_arm64.deb
+GLIBC_SHA=19c43436854a1207a9bf0cea32fa3c0a069fd26f82ab23302d20b0574b635395
+
+is_godot() { [ -f "$1/godot/project.godot" ]; }
+# android_ready: Android building is set up (the SDK, and setup's test build passed once).
+android_ready() { sdk_ok "$ANDROID_HOME" && [ -f "$DATA/.built-$TOOLCHAIN" ]; }
+# android_wanted: Android apps are made here: always on the phone; on a computer once Android building is set up
+# or being set up (setup.json exists), never before: a computer starts without the 1 GB of Android tools.
+android_wanted() { [ "$HOST" = hatchlybox ] || [ -f "$SETUP" ] || android_ready; }
+# need_android: stop with exit code 75 and words a front end shows (with its Set up button) when this computer
+# hasn't set Android building up yet.
+need_android() {
+  android_ready && return 0
+  # Tests of the Android steps themselves, on a machine without the SDK.
+  [ "${HATCHLYBOX_TEST_ANDROID:-}" = 1 ] && return 0
+  [ "$HOST" = hatchlybox ] && return 0
+  echo "Android apps need a one-time setup on this computer first (about 1 GB, 5 to 15 minutes): Settings › Set up Android building, or run hatchlybox setup" >&2
+  exit 75
+}
+
+# godot_ok: Godot is installed, with its Android template where Android apps are made (the phone, or a computer
+# that set Android building up; a computer's own games export without it).
+godot_ok() { [ -f "$DATA/godot/.ready-$GODOT_VER" ] && [ -x "$DATA/godot/$GODOT_VER/godot" ] && { ! android_wanted || [ -f "$GODOT_TEMPLATES/android_release.apk" ]; }; }
+
+# godot_android_template: Godot's Android export template, 105 MB, fetched by range out of the 1.3 GB archive (once).
+godot_android_template() {
+  sha_ok "$GODOT_APK_SHA" "$GODOT_TEMPLATES/android_release.apk" && return 0
+  echo "Godot: the Android export template (105 MB)"
+  python3 -I "$DATA/bin/zip-pick" "$GODOT_REL/Godot_v$GODOT_VER-stable_export_templates.tpz" "$GODOT_TEMPLATES" templates/android_release.apk templates/version.txt \
+    && sha_ok "$GODOT_APK_SHA" "$GODOT_TEMPLATES/android_release.apk" || { rm -f "$GODOT_TEMPLATES/android_release.apk"; echo "couldn't fetch the Android template" >&2; return 1; }
+}
+
+# godot_editor: "<file> <sha kind> <sum>" of the editor for this system (nothing: Godot makes none for it).
+godot_editor() {
+  case "$(android_os)/$(android_arch)" in
+    linux/arm64) echo "Godot_v$GODOT_VER-stable_linux.arm64.zip 256 $GODOT_SHA" ;;
+    linux/x86_64) echo "Godot_v$GODOT_VER-stable_linux.x86_64.zip 512 $GODOT_X86_SHA512" ;;
+    macos/*) echo "Godot_v$GODOT_VER-stable_macos.universal.zip 512 $GODOT_MAC_SHA512" ;;
+  esac
+}
+
+# fetch512 <url> <sha512> <dest>: fetch, checked against a SHA-512 (Godot publishes those).
+fetch512() {
+  [ -f "$3" ] && echo "$2  $3" | sha512sum -c --quiet >/dev/null 2>&1 && return 0
+  mkdir -p "$(dirname "$3")"
+  curl -fsSL --retry 3 -o "$3.part" "$1" || { rm -f "$3.part"; return 1; }
+  echo "$2  $3.part" | sha512sum -c --quiet >/dev/null 2>&1 || { echo "checksum mismatch: $1" >&2; rm -f "$3.part"; return 1; }
+  mv "$3.part" "$3"
+}
+
+# install_godot: the editor for this system (ARM Linux, x86_64 Linux, macOS), only the Android release template
+# out of the 1.3 GB template archive (105 MB, fetched by range), a private glibc on musl, and editor settings
+# for this SDK and JDK. The other systems' templates come when a game is first exported for them (gexport.sh).
+install_godot() {
+  local dl=$CACHE/downloads g=$DATA/godot/$GODOT_VER
+  exec 7> "$CACHE/godot.lock"
+  flock -w 900 7 || { echo "another Godot install is still running" >&2; return 1; }
+  godot_ok && return 0
+  local ed; read -ra ed <<< "$(godot_editor)"
+  [ ${#ed[@]} -eq 3 ] || { echo "Godot makes no editor for $(uname -s) $(uname -m)" >&2; return 1; }
+  mkdir -p "$dl" "$HOME/.local/bin"
+  if [ -e /lib/ld-musl-aarch64.so.1 ] && [ ! -x "$DATA/godot/glibc/lib/ld-linux-aarch64.so.1" ]; then
+    echo "Godot: a private glibc for musl (2.5 MB)"
+    fetch "$GLIBC_URL" "$GLIBC_SHA" "$dl/libc6.deb" || { echo "couldn't download glibc" >&2; return 1; }
+    rm -rf "$DATA/godot/glibc" && mkdir -p "$DATA/godot/glibc" || return 1
+    python3 -I -c '
+import io, sys, tarfile
+deb, out = sys.argv[1], sys.argv[2]
+data = open(deb, "rb").read(); p = 8
+while p < len(data):  # an ar archive: find data.tar.*
+    name = data[p:p + 16].decode().strip().rstrip("/"); size = int(data[p + 48:p + 58])
+    if name.startswith("data.tar"):
+        with tarfile.open(fileobj=io.BytesIO(data[p + 60:p + 60 + size])) as t:
+            for m in t.getmembers():
+                if m.name.startswith("./usr/lib/aarch64-linux-gnu/") and (m.isfile() or m.issym()):
+                    m.name = "lib/" + m.name.split("aarch64-linux-gnu/", 1)[1]
+                    t.extract(m, out)
+        break
+    p += 60 + size + (size & 1)
+' "$dl/libc6.deb" "$DATA/godot/glibc" && [ -x "$DATA/godot/glibc/lib/ld-linux-aarch64.so.1" ] || { echo "couldn't unpack glibc" >&2; return 1; }
+    rm -f "$dl/libc6.deb"
+  fi
+  if [ ! -x "$g/godot" ]; then
+    echo "Godot: the editor $GODOT_VER (about 80 MB)"
+    if [ "${ed[1]}" = 512 ]; then fetch512 "$GODOT_REL/${ed[0]}" "${ed[2]}" "$dl/godot.zip"; else fetch "$GODOT_REL/${ed[0]}" "${ed[2]}" "$dl/godot.zip"; fi \
+      || { echo "couldn't download Godot" >&2; return 1; }
+    rm -rf "$g" && mkdir -p "$g" && unzip -qo "$dl/godot.zip" -d "$g" || { echo "couldn't unpack Godot" >&2; return 1; }
+    # A Mac's editor is an app: godot starts the program inside it.
+    if [ -d "$g/Godot.app" ]; then printf '#!/bin/sh\nexec "%s/Godot.app/Contents/MacOS/Godot" "$@"\n' "$g" > "$g/godot"
+    else mv "$g"/Godot_v*_linux.* "$g/godot"; fi
+    chmod +x "$g/godot" || { echo "couldn't unpack Godot" >&2; return 1; }
+    rm -f "$dl/godot.zip"
+  fi
+  if android_wanted; then godot_android_template || return 1; fi
+  godot_settings || { echo "couldn't write Godot's editor settings" >&2; return 1; }
+  ln -sf "$DATA/bin/godot" "$HOME/.local/bin/godot"
+  "$DATA/bin/godot" --headless --version || { echo "Godot doesn't start on this system" >&2; return 1; }
+  touch "$DATA/godot/.ready-$GODOT_VER"
+}
+
+# godot_settings: Godot's editor settings point at this SDK, JDK and debug key. Release exports are
+# signed with that key too, like the Gradle builds (GODOT_ANDROID_KEYSTORE_RELEASE_* in bin/godot).
+godot_settings() {
+  local dir=$GODOT_CONFIG ks=$HOME/.android/debug.keystore sdk
+  sdk=$(cat "$DATA/sdk.path" 2>/dev/null); sdk=${sdk:-${ANDROID_HOME:-}}
+  mkdir -p "$dir" "$HOME/.android"
+  [ -f "$ks" ] || "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$ks" -storepass android -alias androiddebugkey -keypass android \
+    -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1 || return 1
+  printf '%s\n' '[gd_resource type="EditorSettings" format=3]' '' '[resource]' \
+    "export/android/android_sdk_path = \"$sdk\"" "export/android/java_sdk_path = \"$JAVA_HOME\"" \
+    "export/android/debug_keystore = \"$ks\"" 'export/android/debug_keystore_user = "androiddebugkey"' \
+    'export/android/debug_keystore_pass = "android"' > "$dir/editor_settings-${GODOT_VER%.*}.tres"
+}
+
+# godot_preset <dir> <pkg>: an Android export preset in the project, with the app's package and arm64.
+godot_preset() {
+  local f=$1/godot/export_presets.cfg pkg=$2 n
+  if ! grep -q '^platform="Android"' "$f" 2>/dev/null; then
+    n=$(grep -c '^\[preset\.[0-9]*\]$' "$f" 2>/dev/null); n=${n:-0}
+    printf '%s\n' '' "[preset.$n]" '' 'name="Android"' 'platform="Android"' 'runnable=true' 'export_filter="all_resources"' 'include_filter=""' 'exclude_filter=""' \
+      'export_path="../app/build/outputs/apk/release/app-release.apk"' '' "[preset.$n.options]" '' \
+      'gradle_build/use_gradle_build=false' 'architectures/arm64-v8a=true' "package/unique_name=\"$pkg\"" \
+      'version/code=1' 'version/name="1.0"' >> "$f"
+  fi
+  # Always this app's package, and a template build: the fixed Gradle toolchain can't build Godot's source.
+  sed -i "s|^package/unique_name=.*|package/unique_name=\"$pkg\"|; s|^gradle_build/use_gradle_build=.*|gradle_build/use_gradle_build=false|" "$f"
+}
+
+# godot_build <slug>: import, check every script, export the APK. Errors go to build-err.txt for the agent.
+# godot_check <slug>: import the project and check every script (errors with file and line in build-err.txt, for
+# the agent). A computer without Android building stops here, then exports the game for itself (work).
+godot_check() {
+  local slug=$1 dir="$APPS/$1" err=$CACHE/build-err.txt f rc=0
+  local godot=("$DATA/bin/godot" --headless --path "$dir/godot")
+  : > "$err"
+  godot_ok || install_godot >> "$LOG" 2>&1 || { echo "ERROR: Godot isn't installed and couldn't be installed: see the log" > "$err"; return 1; }
+  ( isolated build "$dir" timeout 20m "${godot[@]}" --import ) > "$CACHE/godot-out.txt" 2>&1
+  cat "$CACHE/godot-out.txt" >> "$LOG"
+  # Parse errors don't stop an export: check each script, so the agent gets them with file and line.
+  while IFS= read -r f; do
+    ( isolated build "$dir" timeout 5m "${godot[@]}" --check-only -s "res://${f#./}" ) > "$CACHE/godot-out.txt" 2>&1 \
+      || { grep -E 'SCRIPT ERROR|ERROR|at: ' "$CACHE/godot-out.txt" | grep -v 'main/main.cpp' | head -12 >> "$err"; rc=1; }
+  done < <(cd "$dir/godot" && find . -name '*.gd' -not -path './.godot/*' -not -path './addons/*' | sort)
+  [ $rc -eq 0 ] || [ -s "$err" ] || echo "ERROR: the game's scripts have errors: see the log" >> "$err"
+  return $rc
+}
+
+godot_build() {
+  local slug=$1 dir="$APPS/$1" err=$CACHE/build-err.txt out rc=0
+  out=$dir/app/build/outputs/apk/release
+  local pkg godot
+  godot=("$DATA/bin/godot" --headless --path "$dir/godot")
+  echo "== godot export (Android)" >> "$LOG"
+  godot_check "$slug" || rc=$?
+  godot_pkg "$slug"; pkg=$(jq -r .pkg "$dir/.hatchlybox.json")
+  godot_preset "$dir" "$pkg"
+  mkdir -p "$out" && rm -f "$out"/*.apk "$out"/*.idsig
+  [ $rc -ne 0 ] || godot_android_template >> "$LOG" 2>&1 || { echo "ERROR: couldn't fetch Godot's Android template: see the log" >> "$err"; rc=1; }
+  if [ $rc -eq 0 ]; then
+    ( isolated build "$dir" timeout 20m "${godot[@]}" --export-release Android "$out/app-release.apk" ) > "$CACHE/godot-out.txt" 2>&1 || rc=$?
+    cat "$CACHE/godot-out.txt" >> "$LOG"
+    [ -f "$out/app-release.apk" ] || { rc=1; grep -E 'ERROR|rror:' -A2 "$CACHE/godot-out.txt" | grep -v 'platform-tools/adb' | head -30 >> "$err"; }
+    rm -f "$out"/*.idsig
+  fi
+  [ $rc -eq 0 ] || [ -s "$err" ] || echo "ERROR: the Godot export failed: see the log" >> "$err"
+  cat "$err" >> "$LOG"
+  return $rc
+}
+
+# godot_pkg <slug>: a Godot app's package follows the game's name (config/name "Realms of Wonder" →
+# com.hatchlybox.realms_of_wonder), not the words of the request. Set once, before it's on Play; after that
+# it never changes (Android and Play know an app by it).
+godot_pkg() {
+  local slug=$1 dir=$APPS/$1 name seg pkg old g=$APPS/$1/app/build.gradle.kts n=2
+  jq -e '.pkgNamed != true and .play == null' "$dir/.hatchlybox.json" >/dev/null || return 0
+  name=$(sed -n 's/^config\/name="\(.*\)"$/\1/p' "$dir/godot/project.godot" | head -1)
+  seg=$(tr '[:upper:]' '[:lower:]' <<< "$name" | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//' | cut -c1-40 | sed 's/_*$//')
+  [ -n "$seg" ] || return 0
+  [[ $seg =~ ^([0-9].*|abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|extends|final|finally|float|for|goto|if|implements|import|instanceof|int|interface|long|native|new|package|private|protected|public|return|short|static|strictfp|super|switch|synchronized|this|throw|throws|transient|try|void|volatile|while|true|false|null)$ ]] \
+    && seg=app_$seg
+  old=$(jq -r .pkg "$dir/.hatchlybox.json"); pkg=$ID_PREFIX.$seg
+  # Another app on this phone has it already: a number keeps them apart.
+  while [ "$pkg" != "$old" ] && cat "$APPS"/*/.hatchlybox.json 2>/dev/null | jq -r .pkg | grep -qxF "$pkg"; do pkg=$ID_PREFIX.${seg}_$n; n=$((n + 1)); done
+  if [ "$pkg" != "$old" ]; then
+    # The unused Kotlin project keeps the same identity, which validate_project checks.
+    sed -i -E "s/(applicationId *= *)\"$old\"/\1\"$pkg\"/; s/(namespace *= *)\"$old\"/\1\"$pkg\"/" "$g"
+    echo "package: $pkg (from the name \"$name\")" >> "$LOG"
+  fi
+  meta "$slug" '.pkg=$p' --arg p "$pkg"
+}
+
+# godot_versions <slug> <code> <name>: the version in the Android preset (play_versions for Godot apps).
+godot_versions() {
+  local f=$APPS/$1/godot/export_presets.cfg
+  godot_preset "$APPS/$1" "$(jq -r .pkg "$APPS/$1/.hatchlybox.json")"
+  sed -i -E "s/^version\/code=.*/version\/code=$2/; s/^version\/name=.*/version\/name=\"$3\"/" "$f"
+  grep -q "^version/code=$2\$" "$f" || sed -i "/^\[preset\.[0-9]*\.options\]\$/a version/code=$2\nversion/name=\"$3\"" "$f"
+  grep -q "^version/code=$2\$" "$f"
+}
+godot_version_code() { sed -n 's/^version\/code=\([0-9]*\)$/\1/p' "$APPS/$1/godot/export_presets.cfg" 2>/dev/null | head -1; }
+
+# godot_aab <slug>: the exported APK repackaged as an app bundle for Play (Godot makes bundles only with its
+# Gradle build): resources converted to aapt2's proto format, laid out as the base module, then bundletool.
+BUNDLETOOL_VER=1.18.1
+BUNDLETOOL_SHA=675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c
+godot_aab() {
+  local slug=$1 dir=$APPS/$1 apk aab t bt=$DATA/godot/bundletool-$BUNDLETOOL_VER.jar err=$CACHE/build-err.txt
+  apk=$dir/app/build/outputs/apk/release/app-release.apk aab=$dir/app/build/outputs/bundle/release/app-release.aab
+  echo "== app bundle from the Godot export" >> "$LOG"
+  fetch "https://github.com/google/bundletool/releases/download/$BUNDLETOOL_VER/bundletool-all-$BUNDLETOOL_VER.jar" "$BUNDLETOOL_SHA" "$bt" \
+    || { echo "ERROR: couldn't download bundletool (32 MB): check the internet connection" > "$err"; return 1; }
+  t=$(mktemp -d "$CACHE/.aab.XXXX") || return 1
+  mkdir -p "${aab%/*}" && rm -f "$aab"
+  # Godot's template lists an icon file its export leaves out; aapt2 won't convert without it.
+  cp "$apk" "$t/in.apk" && python3 -I -c '
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], "a") as z:
+    n = set(z.namelist())
+    if "res/mipmap-anydpi-v26/themed_icon.xml" not in n and "res/drawable/icon_background.xml" in n:
+        z.writestr("res/mipmap-anydpi-v26/themed_icon.xml", z.read("res/drawable/icon_background.xml"))
+' "$t/in.apk" \
+    && "$(bt aapt2)" convert --output-format proto -o "$t/proto.apk" "$t/in.apk" >> "$LOG" 2>&1 \
+    && python3 -I -c '
+import re, sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z, zipfile.ZipFile(sys.argv[2], "w", zipfile.ZIP_DEFLATED) as o:
+    for i in z.infolist():
+        n = i.filename
+        if n.endswith("/") or re.match(r"META-INF/([^/]+\.(RSA|DSA|EC|SF)|MANIFEST\.MF)$", n, re.I): continue
+        if n == "AndroidManifest.xml": d = "manifest/" + n
+        elif n == "resources.pb" or n.startswith(("res/", "assets/", "lib/")): d = n
+        elif re.match(r"classes\d*\.dex$", n): d = "dex/" + n
+        else: d = "root/" + n
+        o.writestr(d, z.read(n))
+' "$t/proto.apk" "$t/base.zip" \
+    && java -Xmx400m -jar "$bt" build-bundle --modules="$t/base.zip" --output="$aab" >> "$LOG" 2>&1 \
+    && java -Xmx400m -jar "$bt" validate --bundle="$aab" > /dev/null 2>> "$LOG" || {
+      rm -rf "$t"; rm -f "$aab"; echo "ERROR: couldn't turn the Godot export into an app bundle: see the log" > "$err"; return 1; }
+  rm -rf "$t"
+}
+
+# godot_icon <slug> <out.png>: the game's icon (config/icon) as a 512 px PNG, drawn by Godot, for Play and
+# the app list.
+godot_icon() {
+  local dir=$APPS/$1 s
+  s=$dir/godot/.godot/hatchlybox-icon.gd
+  mkdir -p "${s%/*}" && cat > "$s" <<'EOF'
+extends SceneTree
+func _init() -> void:
+	var p: String = ProjectSettings.get_setting("application/config/icon", "res://icon.svg")
+	var img := Image.new()
+	if p.get_extension().to_lower() == "svg":
+		var data := FileAccess.get_file_as_bytes(p)
+		img.load_svg_from_buffer(data)
+		if img.get_width() > 0: img.load_svg_from_buffer(data, 512.0 / max(img.get_width(), img.get_height()))
+	else:
+		img = Image.load_from_file(p)
+	if img == null or img.is_empty(): quit(1); return
+	img.convert(Image.FORMAT_RGBA8)
+	img.resize(512, 512, Image.INTERPOLATE_LANCZOS)
+	quit(img.save_png("res://.godot/hatchlybox-icon.png"))
+EOF
+  rm -f "$dir/godot/.godot/hatchlybox-icon.png"
+  ( isolated build "$dir" timeout 2m "$DATA/bin/godot" --headless --path "$dir/godot" -s res://.godot/hatchlybox-icon.gd ) >> "$LOG" 2>&1
+  rm -f "$s"
+  [ -s "$dir/godot/.godot/hatchlybox-icon.png" ] && mv "$dir/godot/.godot/hatchlybox-icon.png" "$2"
+}
+
+# learn_visual <slug>: recipes the agent wrote in design/learned/ (visual learn) join the shared library
+# that visual find searches for every later app. Unfilled templates stay out.
+learn_visual() {
+  local f d=$DATA/visual-learned/$1
+  [ -d "$APPS/$1/design/learned" ] || return 0
+  mkdir -p "$d"
+  for f in "$APPS/$1"/design/learned/*.md; do
+    [ -f "$f" ] && ! grep -q '^title: (what this makes)' "$f" && cp "$f" "$d/"
+  done
+  true
+}
+
+# app_icon <slug>: the app's own launcher icon as a PNG for the front end's list, drawn from its resources
+# (PlayArt, as for the Play store icon). The name carries the time, so a new icon is never a cached old one.
+app_icon() {
+  local slug=$1 d=$CACHE/icons t previous; t=$(now)
+  previous=$(jq -r '.icon // ""' "$APPS/$slug/.hatchlybox.json")
+  mkdir -p "$d"
+  if is_godot "$APPS/$slug"; then LOG=/dev/null godot_icon "$slug" "$d/$slug-$t.png.tmp"
+  else java -Djava.awt.headless=true -Xmx160m "$DATA/bin/PlayArt.java" icon "$APPS/$slug/app/src/main/res" "$d/$slug-$t.png.tmp" >> "$CACHE/icons.log" 2>&1; fi \
+    && mv "$d/$slug-$t.png.tmp" "$d/$slug-$t.png" || { rm -f "$d/$slug-$t.png.tmp"; echo "== $(date '+%F %T') no icon drawn for $slug" >> "$CACHE/icons.log"; return 0; }
+  find "$d" -name "$slug-*.png" ! -name "$slug-$t.png" -delete
+  meta "$slug" '.icon=$i' --arg i "$d/$slug-$t.png"
+}
+
+# missing_icons: draw the list icon of every built app that has none (or whose file is gone).
+missing_icons() {
+  local m s
+  starter_refresh
+  for m in "$APPS"/*/.hatchlybox.json; do
+    [ -f "$m" ] || continue
+    s=${m%/.hatchlybox.json}; s=${s##*/}
+    [ -d "$APPS/$s/app/src/main/res" ] || continue
+    # Godot apps get theirs at the next build (drawing one starts Godot).
+    is_godot "$APPS/$s" && continue
+    [ -f "$(jq -r '.icon // ""' "$m")" ] || app_icon "$s"
+  done
+  true
+}
+
+# ---- peek: the agent sees its app running on this phone (over adb), see the see-it-run skill ----
+#
+# hatchlybox peek [open | look | tap <n|text> | type <text> | swipe up|down|left|right | back | log]
+# Run from an app's folder (the agent's working directory). Each look writes .peek/screen.png (540 px
+# wide), .peek/screen.txt (the elements on screen, numbered) and .peek/crash.txt if the app crashed.
+# Exit codes: 0 seen, 1 error, 2 can't see (no adb), 3 the app crashed.
+
+PEEK_W=540
+
+# peek_app: the app this folder belongs to (sets PEEK_DIR, PEEK_SLUG, PEEK_PKG).
+peek_app() {
+  local d=$PWD
+  while [ "$d" != / ] && [ ! -f "$d/.hatchlybox.json" ]; do d=$(dirname "$d"); done
+  [ -f "$d/.hatchlybox.json" ] || { echo "run peek from an app's folder" >&2; return 1; }
+  PEEK_DIR=$d PEEK_SLUG=$(jq -r .slug "$d/.hatchlybox.json") PEEK_PKG=$(jq -r .pkg "$d/.hatchlybox.json")
+  mkdir -p "$d/.peek"
+}
+
+# peek_elements: the screen's elements from uiautomator, one per line: n, kind, text, x, y, tappable.
+peek_elements() {
+  adb shell uiautomator dump /data/local/tmp/hatchlybox-ui.xml >/dev/null 2>&1 || return 1
+  adb exec-out cat /data/local/tmp/hatchlybox-ui.xml 2>/dev/null | tr '\n' ' ' | sed 's/<node /\n<node /g' | grep '^<node ' \
+    | sed -E 's/.* text="([^"]*)".* class="([^"]*)".* content-desc="([^"]*)".* clickable="([^"]*)".* bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]".*/\1\t\2\t\3\t\4\t\5\t\6\t\7\t\8/' \
+    | awk -F'\t' 'NF == 8 && ($1 != "" || $3 != "" || $4 == "true") {
+        kind = $2; sub(/.*\./, "", kind); kind = tolower(kind)
+        if (kind ~ /button/) kind = "button"; else if (kind ~ /edittext/) kind = "field"; else if (kind ~ /textview/) kind = "text"
+        else if (kind ~ /image/) kind = "image"; else if (kind ~ /checkbox|switch|radio/) kind = "toggle"; else kind = ($4 == "true" ? "tappable" : "view")
+        label = ($1 != "" ? $1 : $3)
+        n++; printf "%d\t%s\t%s\t%d\t%d\t%s\n", n, kind, label, ($5 + $7) / 2, ($6 + $8) / 2, $4 }'
+}
+
+# peek_look: screenshot, elements and crash check, written to .peek and summed up on stdout.
+peek_look() {
+  local p=$PEEK_DIR/.peek rc=0 top
+  rm -f "$p/crash.txt"
+  if adb exec-out screencap -p > "$p/full.png" 2>/dev/null && [ -s "$p/full.png" ]; then
+    java -Xmx160m "$DATA/bin/PlayArt.java" thumb "$p/full.png" "$p/screen.png" $PEEK_W >/dev/null 2>&1 || cp "$p/full.png" "$p/screen.png"
+  fi
+  rm -f "$p/full.png"
+  peek_elements > "$p/elements.tsv" 2>/dev/null || : > "$p/elements.tsv"
+  awk -F'\t' '{ printf "%3d  %-8s %s  at %d,%d%s\n", $1, $2, ($3 == "" ? "(no text)" : "\"" $3 "\""), $4, $5, ($6 == "true" ? "  (tap)" : "") }' "$p/elements.tsv" > "$p/screen.txt"
+  # A crash since the app was opened: Android keeps them in the crash buffer.
+  adb logcat -d -b crash 2>/dev/null | grep -A 30 "Process: $PEEK_PKG" | head -40 > "$p/crash.txt"
+  [ -s "$p/crash.txt" ] || rm -f "$p/crash.txt"
+  top=$(adb shell dumpsys activity activities 2>/dev/null | grep -m1 -E 'mResumedActivity|topResumedActivity' | grep -o "$PEEK_PKG" | head -1)
+  echo "screenshot: .peek/screen.png (read it as an image)"
+  echo "elements:   .peek/screen.txt ($(wc -l < "$p/screen.txt") on screen)"
+  head -25 "$p/screen.txt"
+  if [ -f "$p/crash.txt" ]; then
+    echo "CRASH: the app crashed. The exception (also in .peek/crash.txt):"
+    grep -E 'Exception|Error|Caused by|at '"${PEEK_PKG//./\\.}" "$p/crash.txt" | head -12
+    rc=3
+  elif [ -z "$top" ]; then
+    echo "note: the app isn't the one on screen (it may have closed). Run hatchlybox peek again to reopen it."
+  fi
+  return $rc
+}
+
+peek_cmd() {
+  peek_app || exit 1
+  if ! adb_reconnect; then
+    echo "can't see the app: this phone isn't set up for installing (wireless debugging is off). Skip this check and continue."
+    exit 2
+  fi
+  local a=${1:-open}; shift || true
+  case $a in
+    open)
+      local apk; apk=$(ls -t "$PEEK_DIR"/app/build/outputs/apk/release/*.apk 2>/dev/null | head -1)
+      [ -n "$apk" ] || { echo "no build yet: run ./gradlew --console=plain -q assembleRelease first" >&2; exit 1; }
+      local o; o=$(adb install -r "$apk" 2>&1)
+      if [[ $o != *Success* ]]; then
+        if [[ $o == *UPDATE_INCOMPATIBLE* || $o == *"signatures do not match"* ]]; then
+          echo "can't install: the copy on the phone is signed differently (from Google Play). Skip this check and continue."; exit 2
+        fi
+        echo "install failed: $(tail -1 <<< "$o")" >&2; exit 1
+      fi
+      adb logcat -c -b crash >/dev/null 2>&1
+      adb shell am force-stop "$PEEK_PKG" >/dev/null 2>&1
+      adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+      adb shell monkey -p "$PEEK_PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+      sleep 3
+      peek_look ;;
+    look) peek_look ;;
+    tap)
+      local t=$*; [ -n "$t" ] || { echo "usage: hatchlybox peek tap <number or text>" >&2; exit 1; }
+      [ -s "$PEEK_DIR/.peek/elements.tsv" ] || peek_elements > "$PEEK_DIR/.peek/elements.tsv"
+      local hit
+      if [[ $t =~ ^[0-9]+$ ]]; then hit=$(awk -F'\t' -v n="$t" '$1 == n {print $4, $5; exit}' "$PEEK_DIR/.peek/elements.tsv")
+      else hit=$(awk -F'\t' -v t="$t" 'tolower($3) == tolower(t) {print $4, $5; exit}' "$PEEK_DIR/.peek/elements.tsv")
+        [ -n "$hit" ] || hit=$(awk -F'\t' -v t="$t" 'index(tolower($3), tolower(t)) {print $4, $5; exit}' "$PEEK_DIR/.peek/elements.tsv"); fi
+      [ -n "$hit" ] || { echo "nothing on screen matches \"$t\": see .peek/screen.txt" >&2; exit 1; }
+      # shellcheck disable=SC2086
+      adb shell input tap $hit >/dev/null 2>&1
+      sleep 1.5; peek_look ;;
+    type)
+      local t=$*; [ -n "$t" ] || { echo "usage: hatchlybox peek type <text>" >&2; exit 1; }
+      # input text takes %s for spaces; quote everything else for the phone's shell.
+      adb shell input text "$(printf '%q' "${t// /%s}")" >/dev/null 2>&1
+      sleep 1; peek_look ;;
+    swipe)
+      local size w h; size=$(adb shell wm size 2>/dev/null | awk -F': ' '/size/ {s=$2} END {print s}' | tr -d '\r'); w=${size%x*}; h=${size#*x}; w=${w:-1080}; h=${h:-2400}
+      case ${1:-} in
+        up) adb shell input swipe $((w / 2)) $((h * 3 / 4)) $((w / 2)) $((h / 4)) 300 ;;
+        down) adb shell input swipe $((w / 2)) $((h / 4)) $((w / 2)) $((h * 3 / 4)) 300 ;;
+        left) adb shell input swipe $((w * 4 / 5)) $((h / 2)) $((w / 5)) $((h / 2)) 300 ;;
+        right) adb shell input swipe $((w / 5)) $((h / 2)) $((w * 4 / 5)) $((h / 2)) 300 ;;
+        *) echo "usage: hatchlybox peek swipe up|down|left|right" >&2; exit 1 ;;
+      esac >/dev/null 2>&1
+      sleep 1; peek_look ;;
+    back) adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1; sleep 1; peek_look ;;
+    log)
+      local pid; pid=$(adb shell pidof "$PEEK_PKG" 2>/dev/null | tr -d '\r')
+      if [ -n "$pid" ]; then adb logcat -d --pid="$pid" 2>/dev/null | tail -40; else echo "the app isn't running"; fi
+      adb logcat -d -b crash 2>/dev/null | grep -A 30 "Process: $PEEK_PKG" | head -40 ;;
+    *) echo "usage: hatchlybox peek [open | look | tap <n|text> | type <text> | swipe up|down|left|right | back | log]" >&2; exit 1 ;;
+  esac
+}
+
+# Serve built APKs to a browser as a fallback when adb isn't connected. Files answer only under a random token
+# (any app on a phone can reach 127.0.0.1; anyone on the Wi-Fi can reach a computer's server); serve_url <file>
+# prints a file's link. A phone serves its own browser only; a computer (SERVE_LAN=1) the phones on its network.
+# The server stops itself after 10 idle minutes and is started again here when needed.
+SERVE_TOKEN=$CACHE/serve-token
+serve_bind() { if [ "$SERVE_LAN" = 1 ]; then echo 0.0.0.0; else echo 127.0.0.1; fi; }
+serve() {
+  local v bind; v=$(curl -s --max-time 3 "http://127.0.0.1:$SERVE_PORT/.version" 2>/dev/null); bind=$(serve_bind)
+  # One started by an older version answers without a token or on another address: replace it. So does one whose
+  # token is gone.
+  if [ -n "$v" ] && { [ "$v" != "4 $bind" ] || [ ! -s "$SERVE_TOKEN" ]; }; then
+    pkill -f "Serve.java $SERVE_PORT " 2>/dev/null; sleep 1; v=""
+  fi
+  if [ -z "$v" ]; then
+    head -c 18 /dev/urandom | b64url | tr -dc 'A-Za-z0-9' > "$SERVE_TOKEN"
+    setsid -f "$JAVA_HOME/bin/java" -Xmx48m "$DATA/bin/Serve.java" "$SERVE_PORT" "$CACHE/apks" "$(cat "$SERVE_TOKEN")" "$bind" >/dev/null 2>&1 < /dev/null 5>&- 6>&- 7>&- 8>&- 9>&-
+    for _ in 1 2 3 4 5 6 7 8 9 10; do sleep 1; curl -s -o /dev/null "http://127.0.0.1:$SERVE_PORT/.version" && break; done
+  fi
+}
+serve_url() {
+  local host=127.0.0.1
+  [ "$SERVE_LAN" = 1 ] && host=$(lan_ip) && [ -n "$host" ] || host=127.0.0.1
+  echo "http://$host:$SERVE_PORT/$(cat "$SERVE_TOKEN")/$1"
+}
+# offer_url <file>: the link, and for a person at a computer's terminal a QR code to scan with the phone.
+offer_url() {
+  local u; u=$(serve_url "$1"); echo "$u"
+  [ "$SERVE_LAN" = 1 ] && [ -t 1 ] && { echo "scan it with the phone (same Wi-Fi):" >&2; qr_show "$u" >&2; }
+  return 0
+}
+# qr_rows <text>: the QR code as rows of 1 (dark) and 0 (Sync.java's encoder); qr_show draws it in a terminal.
+qr_rows() { "$JAVA_HOME/bin/java" -Xmx48m "$DATA/bin/Sync.java" qr "$1"; }
+qr_show() {
+  qr_rows "$1" | awk '{ r[NR] = $0 } END {
+    w = length(r[1]) + 4; blank = ""; for (i = 0; i < w; i++) blank = blank "\342\226\210"
+    print blank
+    for (y = 1; y <= NR; y += 2) { line = "\342\226\210\342\226\210"
+      for (x = 1; x <= length(r[1]); x++) { t = substr(r[y], x, 1); b = (y + 1 <= NR) ? substr(r[y + 1], x, 1) : "0"
+        line = line (t == "1" ? (b == "1" ? " " : "\342\226\204") : (b == "1" ? "\342\226\200" : "\342\226\210")) }
+      print line "\342\226\210\342\226\210" }
+    print blank }'
+}
+
+# do_install <slug> [job]: with "job", progress goes to job.json (only the worker's run does
+# that; a standalone install would leave the job stuck on "installing").
+run_agent_impl() {
+  local agent=$1 dir=$2 prompt=$3 rc=0 model=()
+  # The model chosen for this agent in settings (hatchlybox set <agent>Model); none: the agent's own default.
+  [ -z "$(setting "${agent}Model")" ] || model=(--model "$(setting "${agent}Model")")
+  # Never while the vault is open: an agent can read any file this user can.
+  if [ -n "${U:-}" ]; then echo "not running $agent: the publishing keys are unlocked" >> "$LOG"; return 1; fi
+  # A GitHub token from an earlier step of the job isn't the agent's to use.
+  unset GH_TOKEN
+  AGENT_LOG_FROM=$(($(wc -l < "$LOG") + 1))
+  echo "== $agent: $(head -c 300 <<< "$prompt")" >> "$LOG"
+  case $agent in
+    claude)
+      # Only the stdout JSON stream is parsed; stderr (auth errors and the like) goes to the log raw.
+      ( cd "$dir" && timeout "$AGENT_TIMEOUT" "$DATA/bin/isolate" agent "$dir" env IS_SANDBOX=1 claude -p "$prompt" "${model[@]}" --dangerously-skip-permissions \
+          --output-format stream-json --verbose < /dev/null 6>&- 5>&- 8>&- 9>&- ) 2>>"$LOG" \
+        | jq -r --unbuffered '
+            if .type=="assistant" then .message.content[]? |
+              (if .type=="text" then .text
+               elif .type=="tool_use" then "→ \(.name) \(.input.command // .input.file_path // .input.pattern // .input.skill // "" | tostring | .[0:120])"
+               else empty end)
+            elif .type=="result" then "== done: \(.subtype)" else empty end' >> "$LOG" 2>/dev/null
+      rc=${PIPESTATUS[0]} ;;
+    codex)
+      timeout "$AGENT_TIMEOUT" "$DATA/bin/isolate" agent "$dir" codex exec "${model[@]}" --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -C "$dir" "$prompt" \
+        < /dev/null >> "$LOG" 2>&1 6>&- 5>&- 8>&- 9>&-
+      rc=$? ;;
+    opencode)
+      ( cd "$dir" && timeout "$AGENT_TIMEOUT" "$DATA/bin/isolate" agent "$dir" opencode run $OPENCODE_ARGS "${model[@]}" "$prompt" < /dev/null 6>&- 5>&- 8>&- 9>&- ) >> "$LOG" 2>&1
+      rc=$? ;;
+    *) echo "unknown agent $agent" >> "$LOG"; return 1 ;;
+  esac
+  return $rc
+}
+
+# agent_needs_login <rc>: the agent failed with an auth error, so the job cannot succeed:
+# fail fast instead of burning the fix rounds on code that will not change. Only a failed
+# run's own output counts, so an app whose code says "not logged in" doesn't trip it.
+agent_needs_login() {
+  [ "${1:-0}" -ne 0 ] || return 1
+  tail -n +"${AGENT_LOG_FROM:-1}" "$LOG" | grep -v '^→' \
+    | grep -qiE 'not logged in|please run /login|invalid api key|authentication_error|401 unauthorized'
+}
+
+# agent_limit <rc>: the failed run stopped because the agent's plan reached its usage limit. Prints when
+# it resets, when the agent said (Claude: "resets 4am (UTC)"). Only the end of its own output counts.
+agent_limit() {
+  [ "${1:-0}" -ne 0 ] || return 1
+  local out; out=$(tail -n +"${AGENT_LOG_FROM:-1}" "$LOG" | grep -v '^→' | tail -40)
+  grep -qiE "hit your (session |usage |weekly |daily |5-hour )?limit|usage limit (reached|exceeded)|rate.?limit(ed)? (reached|exceeded)|quota (exceeded|reached)|exceeded your current quota|insufficient_quota|too many requests" <<< "$out" || return 1
+  grep -oiE "resets? (at |on |in )?[^.·\n]{1,40}" <<< "$out" | tail -1 | sed 's/[[:space:]]*$//'
+  return 0
+}
+agent_label() { case $1 in claude) echo "Claude Code" ;; codex) echo Codex ;; opencode) echo OpenCode ;; *) echo "$1" ;; esac; }
+# agent_failure <agent> <rc>: the job's message for a failed agent run, in words. A usage limit is also kept
+# in job.json (.limit: agent, resets) so the front end can offer to continue with another AI helper.
+agent_failure() {
+  local agent=${AGENT_USED:-$1} rc=$2 name resets; name=$(agent_label "$agent")
+  if resets=$(agent_limit "$rc"); then
+    jobset '.limit={agent: $a, resets: $r, at: $t}' --arg a "$agent" --arg r "$resets" --argjson t "$(now)"
+    echo "$name has reached its usage limit${resets:+ (it $resets)}: continue with another AI helper, or try again then"
+  elif agent_needs_login "$rc"; then echo "$name isn't logged in: sign in, then try again"
+  elif [ "$rc" = 124 ]; then echo "$name ran out of time ($AGENT_TIMEOUT): try again to carry on from where it got to"
+  elif [ "$rc" = 125 ]; then echo "this job used up its time and repair rounds: try again to carry on"
+  else echo "$name stopped with an error ($rc): see the log, then try again"; fi
+}
+
+# agents_doc <file>: AGENTS.md for a project, its environment section (where the agent runs, where the app
+# goes) from this platform's environment.md; without one, AGENTS.md's own neutral text.
+agents_doc() {
+  if [ -f "$DATA/environment.md" ]; then
+    awk -v env="$DATA/environment.md" '/^<!-- environment -->$/ { print; while ((getline l < env) > 0) print l; skip = 1; next }
+      /^<!-- \/environment -->$/ { skip = 0 } !skip' "$DATA/AGENTS.md" > "$1"
+  else cat "$DATA/AGENTS.md" > "$1"; fi
+}
+
+# project <dir> <pkg> <name> <label>: a copy of the template with its placeholders filled in.
+project() {
+  local dir=$1 pkg=$2
+  mkdir -p "$dir" && cp -r "$DATA/template/." "$dir/" || return 1
+  # The web wrapper's files (wrap.sh) are kept beside the template, not in projects (a dot folder wouldn't survive
+  # an APK's assets, so it has a plain name).
+  rm -rf "$dir/webshell"
+  grep -rl '__PKG__\|__NAME__\|__LABEL__' "$dir" | xargs sed -i "s/__PKG__/$pkg/g; s/__NAME__/$3/g; s/__LABEL__/$4/g"
+  local src="$dir/app/src/main/java"
+  mkdir -p "$src/${pkg//.//}"
+  mv "$src/com/hatchlybox/template/MainActivity.kt" "$src/${pkg//.//}/"
+  rmdir -p "$src/com/hatchlybox/template" 2>/dev/null
+  true
+}
+
+scaffold() {
+  local slug=$1 dir="$APPS/$1" pkg="$ID_PREFIX.${1//-/_}"
+  # A package segment must start with a letter and not be a Java keyword ("2048-game", "class").
+  [[ ${pkg##*.} =~ ^([0-9].*|abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|extends|final|finally|float|for|goto|if|implements|import|instanceof|int|interface|long|native|new|package|private|protected|public|return|short|static|strictfp|super|switch|synchronized|this|throw|throws|transient|try|void|volatile|while|true|false|null)$ ]] \
+    && pkg="$ID_PREFIX.app_${pkg##*.}"
+  local label; label=$(sed 's/-/ /g; s/\b\(.\)/\u\1/g' <<< "$slug")
+  project "$dir" "$pkg" "$slug" "$label" || return 1
+  agents_doc "$dir/AGENTS.md" && ln -s AGENTS.md "$dir/CLAUDE.md" || return 1
+  git init -q "$dir" && hygiene "$dir" && gq "$dir" add -A && gq "$dir" commit -qm scaffold || return 1
+  jq -nc --arg s "$slug" --arg p "$pkg" --arg l "$label" --argjson t "$(now)" \
+    '{slug:$s, pkg:$p, label:$l, created:$t, updated:$t, status:"new", history:[]}' > "$dir/.hatchlybox.json"
+}
+
+# build_fixing <slug> <agent> <build function> <what>: build; on errors the agent fixes them, up to
+# FIX_ROUNDS times. Without an agent (or with it logged out) the first failure ends the job.
+build_fixing() {
+  local slug=$1 agent=$2 build=$3 what=$4 round=0
+  while :; do
+    job building "$what"
+    if "$build" "$slug"; then return 0; fi
+    round=$((round + 1))
+    if [ -z "$agent" ] || ! command -v "$agent" >/dev/null 2>&1; then
+      job failed "the build failed: see the log"; return 1
+    fi
+    if [ $round -gt $FIX_ROUNDS ]; then
+      job failed "build still failing after $FIX_ROUNDS fixes"; return 1
+    fi
+    job fixing "$agent fixing build errors ($round/$FIX_ROUNDS)"
+    local how="The Gradle build (./gradlew assembleRelease) failed. Fix the code and return; do not run Gradle."
+    is_godot "$APPS/$slug" && how="The Godot export of the godot/ project failed. Fix the project and return; do not export it yourself."
+    run_agent "$agent" "$APPS/$slug" "$how Hatchlybox rebuilds after you exit. Errors:
+$(grep -E 'e: |error:|ERROR|FAILURE|What went wrong|SCRIPT ERROR|at: ' -A3 "$CACHE/build-err.txt" | head -60)"
+    local arc=$?
+    if [ "$arc" -ne 0 ]; then
+      job failed "$(agent_failure "$agent" "$arc")"; return 1
+    fi
+  done
+}
+
+# The job itself: agent, then build-and-fix rounds, then install.
+# ---- skills: tested guides with working code, copied into each app for its agent ----
+#
+# $DATA/skills/<name>/ holds SKILL.md (the guide, with the front matter Claude Code reads), example/ (code
+# that skills-check.sh builds together with every library) and meta.json (what the front end's library shows).
+# Each agent run gets the ones the user hasn't switched off (settings.json skillsOff) in .claude/skills/,
+# where Claude Code finds them by itself; AGENTS.md points Codex and OpenCode there.
+
+SKILLS=$DATA/skills
+SKILL_ORDER='["screens","data","design","reminders","network","games","godot","visual","camera","media","widget","see-it-run","play-ready"]'
+
+# HATCHLYBOX_SKILLS_OFF (comma-separated) switches skills off for one job: Excellence Lab's baselines.
+skill_off() {
+  [[ ",${HATCHLYBOX_SKILLS_OFF:-}," == *",$1,"* ]] && return 0
+  jq -e --arg n "$1" '(.skillsOff // []) | index($n)' "$SETTINGS" >/dev/null 2>&1
+}
+
+# earlier_apps <dir>: the other apps made here (name, hook, request), so a new concept can differ from them;
+# isolated agents can't see the other folders. Kept in .claude/skills/, which stays out of git.
+earlier_apps() {
+  local d=$1 a hook req
+  echo "# Earlier apps made here: don't repeat their concepts, core loops or looks unless the request asks"
+  for a in "$APPS"/*/; do
+    [ "$(realpath "$a")" = "$(realpath "$d")" ] || [ ! -f "$a/.hatchlybox.json" ] && continue
+    hook=$(grep -m1 '^# ' "$a/design/brief.md" 2>/dev/null | cut -c3-200)
+    req=$(jq -r '.history[0].prompt // empty' "$a/.hatchlybox.json" 2>/dev/null | sed -n '1s/^Build this Android app in the current directory: //p' | cut -c1-200)
+    printf -- '- %s: %s%s\n' "$(jq -r '.label // empty' "$a/.hatchlybox.json")" "${hook:+$hook. }" "${req:+Request: $req}"
+  done
+}
+
+# install_skills <dir>: the skills, and the tested library list for apps made before it existed.
+install_skills() {
+  local d=$1 s n
+  [ -d "$SKILLS" ] || return 0
+  rm -rf "$d/.claude/skills"; mkdir -p "$d/.claude/skills"
+  for s in "$SKILLS"/*/; do
+    n=$(basename "$s")
+    skill_off "$n" && continue
+    mkdir -p "$d/.claude/skills/$n"
+    cp "$s"/*.md "$d/.claude/skills/$n/"
+    [ ! -d "$DATA/visual/skills/$n" ] || cp "$DATA/visual/skills/$n"/*.md "$d/.claude/skills/$n/"
+    [ -d "$s/example" ] && cp -r "$s/example" "$d/.claude/skills/$n/"
+  done
+  skill_off direction || earlier_apps "$d" > "$d/.claude/skills/direction/earlier-apps.md"
+  # Visual off: no pointers to it either (AGENTS.md's tools list and table, the godot skill's note).
+  if skill_off visual; then
+    [ ! -f "$d/AGENTS.md" ] || sed -i '/^- \*\*visual\*\*/,/^- \*\*Everyday/{/^- \*\*Everyday/!d}; /^| visual |/d' "$d/AGENTS.md"
+    [ ! -f "$d/.claude/skills/godot/SKILL.md" ] || sed -i '/^\*\*Graphics:\*\* read the `visual` skill/,/^$/d' "$d/.claude/skills/godot/SKILL.md"
+  fi
+  if [ ! -f "$d/gradle/libs.versions.toml" ] && [ -f "$DATA/template/gradle/libs.versions.toml" ]; then
+    mkdir -p "$d/gradle"; cp "$DATA/template/gradle/libs.versions.toml" "$d/gradle/"
+  fi
+  # The skills say KSP and serialization are declared at the root: add them to older apps' root build.
+  if [ -f "$d/build.gradle.kts" ] && ! grep -q 'libs.plugins.ksp' "$d/build.gradle.kts"; then
+    sed -i '0,/^}/s//    alias(libs.plugins.ksp) apply false\n    alias(libs.plugins.kotlin.serialization) apply false\n}/' "$d/build.gradle.kts"
+  fi
+  true
+}
+
+# note_skills <slug>: which skills the agent opened during this job (its log), kept on the run's history entry.
+note_skills() {
+  local used; used=$(grep -oE '\.claude/skills/[a-z-]+|→ Skill [a-z-]+' "$LOG" 2>/dev/null | sed -E 's#.*/##; s#^→ Skill ##' | sort -u | jq -R . | jq -sc .)
+  [ "${used:-[]}" = "[]" ] && return 0
+  meta "$1" '.history[-1].skills = ((.history[-1].skills // []) + $s | unique)' --argjson s "$used"
+}
+
+# skills_index: $CACHE/skills.json for the front end: each skill's meta, whether it's on, and the apps that used it.
+skills_index() {
+  [ -d "$SKILLS" ] || return 0
+  local tmp m used off
+  off=$(jq -c '.skillsOff // []' "$SETTINGS" 2>/dev/null || echo '[]')
+  used=$(for m in "$APPS"/*/.hatchlybox.json; do [ -f "$m" ] && cat "$m"; done \
+    | jq -sc '[.[] | {label: (.label // .slug), skills: ([.history[]?.skills[]?] | unique)}]' 2>/dev/null)
+  tmp=$(mktemp "$CACHE/.skills.XXXX")
+  for m in "$SKILLS"/*/meta.json; do jq -c --arg n "$(basename "$(dirname "$m")")" '. + {name: $n}' "$m"; done \
+    | jq -sc --argjson off "${off:-[]}" --argjson used "${used:-[]}" --argjson order "$SKILL_ORDER" \
+        'map(. as $s | . + {on: (($off | index($s.name)) == null), apps: [$used[] | select(.skills | index($s.name)) | .label]})
+         | sort_by(. as $s | ($order | index($s.name)) // 99)' > "$tmp" && mv "$tmp" "$CACHE/skills.json"
+}
+
+# skill_cmd <name> on|off: a skill the agents get, or not.
+skill_cmd() {
+  local n=${1:-} v=${2:-}
+  [ -f "$SKILLS/$n/SKILL.md" ] && [[ $v =~ ^(on|off)$ ]] || { echo "usage: hatchlybox skill <name> on|off" >&2; return 1; }
+  json_edit "$SETTINGS" --arg n "$n" --arg v "$v" '.skillsOff = (((.skillsOff // []) - [$n]) + (if $v == "off" then [$n] else [] end))' || return 1
+  skills_index
+  echo "$n: $v"
+}
+
+# crash_check <pkg>: the crash of the app's last launch, if it crashed (nothing = it started fine).
+# crash_fix <slug> <agent>: right after an install over adb. A crash on start goes back to the agent like a
+# build error, up to FIX_ROUNDS times: fix, rebuild, reinstall, check again.
+job_active() {
+  jq -e '.phase | IN("queued","agent","checking","building","fixing","art","installing","uploading")' "$JOB" >/dev/null 2>&1
+}
+
+# can_start <agent>: refuse before anything is created, so a refused job leaves no half-made app.
+# job_running: active and its worker still alive (a crashed one leaves job.json "active").
+# start <kind> <slug> <agent> <arg>: kind "app" runs work() with arg as the prompt; "play-prepare" and
+# "play-upload" the Play jobs (arg: listing / the track).
+# need_app <slug>: an app made here, by a plain slug, so nothing outside ~/apps is touched.
+need_app() {
+  [[ ${1:-} =~ ^[a-z0-9][a-z0-9-]*$ ]] && [ -f "$APPS/$1/.hatchlybox.json" ] || { echo "no app ${1:-}" >&2; exit 1; }
+}
+
+# The first installed agent, for an app whose own agent has been removed since.
+first_agent() { "$0" agents | awk '{print $1}'; }
+
+slugify() {
+  tr '[:upper:]' '[:lower:]' <<< "$1" | tr -cs 'a-z0-9' ' ' \
+    | awk '{n=0; for(i=1;i<=NF && n<3;i++) if (length($i)>2 && $i !~ /^(app|an|the|and|for|with|that|make|build|create|simple|android|which|shows|show)$/) {printf "%s%s", (n?"-":""), $i; n++}}'
+}
+
+new_prompt() {
+  cat <<EOF
+Build this Android app in the current directory: $1
+
+The project is already scaffolded (Kotlin, Jetpack Compose, Material 3). Read AGENTS.md first and
+follow it, then read the skills in .claude/skills that fit this app (always direction, design and see-it-run).
+Start with pre-production as a professional studio would (the direction skill): research the market and
+current trends on the web, choose an original concept and write design/brief.md before building, so this
+app looks and plays like no other, unless the request says otherwise.
+Build the complete app the request describes, ready to install and use: every feature working end to end,
+saved data that survives a restart, a finished look and a fitting launcher icon. No placeholders.
+Give the app a short, fitting name in app/src/main/res/values/strings.xml (app_name).
+Finish the implementation and return; Hatchlybox builds, installs and checks startup after you exit.
+EOF
+}
+
+# ---- reviewing changes: each change waits on its own branch until it's accepted or discarded ----
+#
+# A new app goes straight onto the main branch. A change starts a branch (change/<time>) from it; the
+# agent works there, the build is installed to try, and .pending in .hatchlybox.json holds it until
+# "accept" merges it or "discard" drops it and puts the previous APK back. With GitHub connected, the
+# branch is also a pull request, and merging or closing it there counts too.
+
+# Kept out of git: this phone's paths (local.properties, gradle.properties), the app's history and Play
+# details (.hatchlybox.json), screenshots of the phone's screen, builds and anything that looks like a key.
+PRIVATE_IGNORES=(.kotlin/ .hatchlybox.json.lock .gradle/ build/ app/build/ godot/.godot/ design/renders/ '*.idsig' local.properties gradle.properties .hatchlybox.json play/shots/ .peek/ .claude/skills/
+  '*.apk' '*.aab' '*.p12' '*.jks' '*.keystore' '*.pem' '*.pass' 'service-account*.json' .env)
+PRIVATE_FILES=(.hatchlybox.json.lock .hatchlybox.json local.properties gradle.properties play/shots .peek)
+
+# gq <dir> <git args...>: git in an app, committing as hatchlybox (never the user's own name or email).
+gq() { local d=$1; shift; git -C "$d" -c user.name=hatchlybox -c user.email=hatchlybox@localhost "$@"; }
+
+# hygiene <dir>: the app's repo commits as hatchlybox and ignores (and stops tracking) the private files.
+hygiene() {
+  local d=$1 l
+  git -C "$d" config user.name hatchlybox && git -C "$d" config user.email hatchlybox@localhost
+  touch "$d/.gitignore"; [ -z "$(tail -c1 "$d/.gitignore")" ] || echo >> "$d/.gitignore"
+  for l in "${PRIVATE_IGNORES[@]}"; do grep -qxF -- "$l" "$d/.gitignore" || printf '%s\n' "$l" >> "$d/.gitignore"; done
+  gq "$d" rm -r --cached -q --ignore-unmatch "${PRIVATE_FILES[@]}" >/dev/null 2>&1
+  true
+}
+
+# save <slug> <message>: commit whatever changed.
+save() {
+  local d=$APPS/$1; hygiene "$d"
+  gq "$d" add -A >> "$LOG" 2>&1 || return 1
+  git -C "$d" diff --cached --quiet && return 0
+  gq "$d" commit -qm "$(head -c 200 <<< "$2")" >> "$LOG" 2>&1
+}
+
+# git_lock [now]: one accept, discard, publish or GitHub sync at a time, so the background sync never
+# moves an app's branches while a tap is moving them too. "now" gives up at once instead of waiting.
+git_lock() {
+  exec 8> "$CACHE/git.lock"
+  if [ "${1:-}" = now ]; then flock -n 8; else flock -w 120 8 || { echo "another git step is still running: try again" >&2; exit 1; }; fi
+}
+
+pending() { jq -e '.pending != null' "$APPS/$1/.hatchlybox.json" >/dev/null 2>&1; }
+pget() { jq -r ".pending.$2 // empty" "$APPS/$1/.hatchlybox.json"; }
+
+# begin_change <slug> <request>: save the main branch, then branch off it for the change.
+begin_change() {
+  local slug=$1 d=$APPS/$1 base t
+  base=$(git -C "$d" branch --show-current); base=${base:-master}
+  # Older apps carry an older AGENTS.md: give the agent the current rules.
+  agents_doc "$d/AGENTS.md" 2>/dev/null
+  save "$slug" "Save work in progress" || return 1
+  t=$(now)
+  gq "$d" checkout -q -b "change/$t" || { echo "couldn't start a branch for the change" >&2; return 1; }
+  # The APK from before the change, for discard.
+  if [ -f "$CACHE/apks/$slug.apk" ]; then cp "$CACHE/apks/$slug.apk" "$CACHE/apks/$slug.main.apk"; else rm -f "$CACHE/apks/$slug.main.apk"; fi
+  meta "$slug" '.pending={branch:$b, base:$base, t:$t, request:$r, built:false, originalArtifact:.artifacts.apk}' \
+    --arg b "change/$t" --arg base "$base" --argjson t "$t" --arg r "$2"
+}
+
+# The app's name, from its strings.xml.
+app_label() { sed -n 's:.*name="app_name"[^>]*>\(.*\)</string>.*:\1:p' "$APPS/$1/app/src/main/res/values/strings.xml" 2>/dev/null | head -1; }
+
+# finish_change <slug>: after the merge (here or on GitHub), forget the branch and the old APK.
+finish_change() {
+  local slug=$1 b; b=$(pget "$slug" branch)
+  gq "$APPS/$slug" branch -q -D "$b" >/dev/null 2>&1
+  rm -f "$CACHE/apks/$slug.main.apk"
+  meta "$slug" 'del(.pending) | .updated=$t' --argjson t "$(now)"
+  sync_changed
+  local f id
+  id=$(jq -r '.id // empty' "$CACHE/job.json" 2>/dev/null)
+  for f in "$CACHE/job.json" "$CACHE/jobs/$id/job.json"; do
+    [ -f "$f" ] || continue
+    json_edit "$f" --arg s "$slug" 'if .slug == $s and .phase == "ready" then .msg="Change accepted. Your project is up to date." else . end' || return 1
+  done
+}
+
+accept_change() {
+  local slug=$1 d=$APPS/$1 b base req gh=""
+  pending "$slug" || { echo "$slug has no change waiting" >&2; return 1; }
+  [ "$(pget "$slug" built)" = true ] || { echo "the change didn't build: retry it or discard it" >&2; return 1; }
+  b=$(pget "$slug" branch) base=$(pget "$slug" base) req=$(pget "$slug" request)
+  app_gh "$slug" && gh=1
+  save "$slug" "Finish reviewed app update" || return 1
+  # The pull request's branch has to match, so GitHub sees it merged once main has it. GitHub being
+  # unreachable, or leak_check refusing the push, doesn't stop the change being accepted here.
+  local note=" (not on GitHub yet: it goes up with the next accepted change)"
+  if [ -n "$gh" ] && ! push_app "$slug" "$b" 2>/dev/null; then gh=""; else note=""; fi
+  gq "$d" checkout -q "$base" && gq "$d" merge -q --no-ff "$b" -m "Accept reviewed app update" >/dev/null 2>&1 || {
+    gq "$d" merge --abort >/dev/null 2>&1; gq "$d" checkout -q "$b"
+    echo "couldn't merge the change: see git in the terminal" >&2; return 1; }
+  if [ -n "$gh" ]; then
+    if push_app "$slug" "$base" 2>/dev/null; then ghpush "$d" --delete "$b" >/dev/null 2>&1
+    else note=" (not on GitHub yet: it goes up with the next accepted change)"; fi
+  fi
+  finish_change "$slug"
+  echo "accepted: $(head -1 <<< "$req")$note"
+}
+
+# discard_change <slug> [closed]: back to the main branch and its APK; "closed" when GitHub closed it.
+discard_change() {
+  local slug=$1 closed=${2:-} d=$APPS/$1 b base t pr repo label
+  pending "$slug" || { echo "$slug has no change waiting" >&2; return 1; }
+  b=$(pget "$slug" branch) base=$(pget "$slug" base) t=$(pget "$slug" t) pr=$(pget "$slug" pr)
+  repo=$(jq -r '.github.repo // empty' "$d/.hatchlybox.json")
+  gq "$d" checkout -q -f "$base" && gq "$d" clean -fdq || { echo "couldn't go back to $base" >&2; return 1; }
+  gq "$d" branch -q -D "$b" >/dev/null 2>&1
+  if [ -n "$pr" ] && [ -z "$closed" ] && app_gh "$slug"; then
+    gh pr close "$pr" -R "$repo" --delete-branch --comment "Discarded in Hatchlybox." >/dev/null 2>&1 \
+      || echo "couldn't close pull request #$pr on GitHub: close it there" >&2
+  fi
+  label=$(app_label "$slug")
+  if [ -f "$CACHE/apks/$slug.main.apk" ]; then
+    mv "$CACHE/apks/$slug.main.apk" "$CACHE/apks/$slug.apk"
+    meta "$slug" '.artifacts.apk=.pending.originalArtifact | del(.pending) | del(.github.blocked) | .label=(($l | select(. != "")) // .label) | .outcomes.build=(if .artifacts.apk then "restored" else "needs-rebuild" end) | .outcomes.install="unverified" | .outcomes.runtime="unverified" | del(.downloaded) | .history |= map(if .t >= $t then .discarded=true else . end) | .updated=$n' \
+      --arg l "$label" --argjson t "$t" --argjson n "$(now)"
+    # The changed build may be on the phone: put the old one back.
+    if [ "$(jq -r '.status' "$d/.hatchlybox.json")" = installed ] && adb_reconnect; then
+      do_install "$slug" >/dev/null 2>&1 && { echo "discarded: the previous version is back on the phone"; return 0; }
+    fi
+    meta "$slug" '.status="ready"'
+    if jq -e '.artifacts.apk != null' "$d/.hatchlybox.json" >/dev/null; then echo "discarded: tap install to put the previous version back"
+    else echo "discarded: previous code restored; rebuild before installing"; fi
+  else
+    rm -f "$CACHE/apks/$slug.apk"
+    meta "$slug" 'del(.pending) | del(.github.blocked) | del(.apk) | .status="cancelled" | .history |= map(if .t >= $t then .discarded=true else . end)' --argjson t "$t"
+    echo "discarded"
+  fi
+}
+
+# ---- GitHub (optional): each app can be a repo, private unless made public; changes are pull requests ----
+#
+# Uses the GitHub CLI's logins (gh auth login); tokens stay in gh's config and are handed to gh and git
+# per command through GH_TOKEN, so gh's own active account is never changed. Hatchlybox uses only the
+# accounts the user picked (.allowed); .account is the one new apps go to, and each app keeps syncing with
+# the account that owns its repo. Logging out only takes an account off .allowed: nothing is deleted.
+# Before anything is pushed, leak_check looks through every commit that would go.
+
+GHSTATE=$CACHE/github.json
+
+# Some account is in use: one the user picked (a gh login made for something else doesn't count).
+gh_on() { [ -n "$(type -P gh)" ] && jq -e '(.allowed // []) | length > 0' "$GHSTATE" >/dev/null 2>&1; }
+
+# use_account <login>: later gh and git calls act as that account, when Hatchlybox may use it.
+use_account() {
+  local l=$1 label
+  unset GH_TOKEN
+  jq -e --arg l "$l" '(.allowed // []) | index($l)' "$GHSTATE" >/dev/null 2>&1 || return 1
+  label=$(jq -r --arg l "$l" '[(.accounts // [])[] | select(.login == $l) | .label][0] // empty' "$GHSTATE")
+  [ -n "$label" ] || return 1
+  GH_TOKEN=$(gh auth token -h github.com -u "$label" 2>/dev/null) && [ -n "$GH_TOKEN" ] || { unset GH_TOKEN; return 1; }
+  export GH_TOKEN
+}
+
+# app_account <slug>: the account that owns the app's repo (nothing when it isn't on GitHub).
+app_account() { jq -r '(.github.account // ((.github.repo // "") | split("/")[0])) // empty' "$APPS/$1/.hatchlybox.json" 2>/dev/null; }
+
+# app_gh <slug>: the app is on GitHub under an account still in use; gh and git now act as that account.
+app_gh() { local a; unset GH_TOKEN; a=$(app_account "$1"); [ -n "$a" ] && gh_on && use_account "$a"; }
+
+# apps_of <login>: the slugs of the apps on GitHub under that account.
+apps_of() {
+  local m s
+  for m in "$APPS"/*/.hatchlybox.json; do
+    [ -f "$m" ] || continue
+    s=${m%/.hatchlybox.json}; s=${s##*/}
+    [ "$(app_account "$s")" = "$1" ] && echo "$s"
+  done
+  true
+}
+
+github_status() {
+  if ! command -v gh >/dev/null 2>&1; then ghs '.state="missing" | .accounts=[] | .msg=""'
+  else
+    local label t u list='[]' n=0 ok=0
+    # Each of gh's logins, asked of GitHub: the name gh keeps for a login isn't always who its token is.
+    while read -r label; do
+      [ -n "$label" ] || continue
+      n=$((n + 1))
+      t=$(gh auth token -h github.com -u "$label" 2>/dev/null) || continue
+      u=$(GH_TOKEN=$t timeout 20 gh api user 2>/dev/null) || continue
+      ok=$((ok + 1))
+      list=$(jq -c --arg l "$label" --argjson u "$u" \
+        'if any(.[]; .login == $u.login) then . else . + [{label: $l, login: $u.login, email: ($u.email // null), id: $u.id}] end' <<< "$list")
+    done < <(timeout 20 gh auth status -h github.com --json hosts --jq '.hosts["github.com"] // [] | sort_by(.active | not) | .[].login' 2>/dev/null)
+    if [ "$n" -gt 0 ] && [ "$list" = '[]' ]; then
+      ghs '.msg="couldn'"'"'t reach GitHub to check the login" | .checked=$t' --argjson t "$(now)"
+    else
+      # Before accounts, "on" meant gh's active login: that one stays in use. The emails of every
+      # account seen are kept for leak_check. When every login answered, accounts signed out of since
+      # (with gh auth logout) are no longer in use.
+      ghs '.accounts=$a | .state=(if ($a | length) > 0 then "connected" else "none" end) | .msg="" | .checked=$t
+        | if has("allowed") then . else .allowed=(if .enabled == true and ($a | length) > 0 then [$a[0].login] else [] end) | .account=(.allowed[0] // null) end
+        | if $all then .allowed=[.allowed[] | select(. as $l | any($a[]; .login == $l))]
+            | (if .account != null and (.account as $c | .allowed | index($c)) == null then .account=null else . end) else . end
+        | .emails=((.emails // {}) + ([$a[] | select(.email != null) | {(.login): .email}] | add // {}) + (if .email != null and .login != null then {(.login): .email} else {} end))
+        | .login=.account | del(.enabled, .email, .id)' --argjson a "$list" --argjson t "$(now)" --argjson all "$([ "$ok" -eq "$n" ] && echo true || echo false)"
+    fi
+  fi
+  cat "$GHSTATE"; echo
+}
+
+# github_use <login>: new apps go to that account, one of gh's logins on this phone. The account before
+# keeps syncing the apps it has (with none, it's dropped).
+github_use() {
+  local l=$1 prev
+  jq -e --arg l "$l" 'any((.accounts // [])[]; .login == $l)' "$GHSTATE" >/dev/null 2>&1 \
+    || { echo "$l isn't signed in on this phone: add it first" >&2; return 1; }
+  prev=$(jq -r '.account // empty' "$GHSTATE")
+  if [ -n "$prev" ] && [ "$prev" != "$l" ] && [ -z "$(apps_of "$prev")" ]; then ghs '.allowed -= [$p]' --arg p "$prev"; fi
+  ghs '.account=$l | .login=$l | .allowed=(((.allowed // []) - [$l]) + [$l])' --arg l "$l"
+  echo "new apps go to $l on GitHub"
+}
+
+# github_resume <login>: Hatchlybox syncs that account's apps again, after a logout. New apps keep going
+# to the account they go to (to this one, when none is picked).
+github_resume() {
+  local l=$1
+  jq -e --arg l "$l" 'any((.accounts // [])[]; .login == $l)' "$GHSTATE" >/dev/null 2>&1 \
+    || { echo "$l isn't signed in on this phone: add it first" >&2; return 1; }
+  ghs '.allowed=(((.allowed // []) - [$l]) + [$l]) | if .account == null then .account=$l | .login=$l else . end' --arg l "$l"
+  echo "syncing with $l again"
+}
+
+# github_logout <login>: Hatchlybox stops syncing with that account. Its repos, the apps on this phone and
+# gh's own login stay as they are; using the account again picks up where it left off.
+github_logout() {
+  local l=$1 n
+  jq -e --arg l "$l" '(.allowed // []) | index($l)' "$GHSTATE" >/dev/null 2>&1 || { echo "Hatchlybox isn't using $l" >&2; return 1; }
+  ghs '.allowed -= [$l] | if .account == $l then .account=null | .login=null else . end' --arg l "$l"
+  n=$(apps_of "$l" | grep -c .)
+  case $n in
+    0) echo "logged out of $l" ;;
+    1) echo "logged out of $l: its app stays on GitHub and on this phone but doesn't sync any more" ;;
+    *) echo "logged out of $l: its $n apps stay on GitHub and on this phone but don't sync any more" ;;
+  esac
+}
+
+# github_signout <login>: this phone forgets the account's login (gh auth logout), so nothing here can use it
+# any more. As with logout, its repos and the apps on this phone stay as they are.
+github_signout() {
+  local l=$1 label n
+  label=$(jq -r --arg l "$l" '[(.accounts // [])[] | select(.login == $l) | .label][0] // empty' "$GHSTATE")
+  [ -n "$label" ] || { echo "this phone isn't signed in to $l" >&2; return 1; }
+  timeout 30 gh auth logout -h github.com -u "$label" >/dev/null 2>&1 \
+    || { echo "couldn't sign out of $l: run gh auth logout in a terminal" >&2; return 1; }
+  ghs '.allowed=((.allowed // []) - [$l]) | .accounts=((.accounts // []) | map(select(.login != $l)))
+    | if .account == $l then .account=null | .login=null else . end
+    | .state=(if (.accounts | length) > 0 then "connected" else "none" end)' --arg l "$l"
+  github_status >/dev/null
+  n=$(apps_of "$l" | grep -c .)
+  if [ "$n" -gt 0 ]; then echo "signed out of $l: its apps stay on GitHub and on this phone but don't sync any more"
+  else echo "signed out of $l on this phone"; fi
+}
+
+# github_add: sign in to another account (in a terminal), then use it for new apps. gh makes a new login
+# its active one; the one before is put back, for whatever else uses gh.
+github_add() {
+  local prev now new
+  prev=$(gh auth status -h github.com --json hosts --jq '.hosts["github.com"] // [] | .[] | select(.active) | .login' 2>/dev/null)
+  gh auth login -h github.com -p https -w || return 1
+  now=$(gh auth status -h github.com --json hosts --jq '.hosts["github.com"] // [] | .[] | select(.active) | .login' 2>/dev/null)
+  new=$(gh api user --jq .login 2>/dev/null)
+  if [ -n "$prev" ] && [ "$prev" != "$now" ]; then gh auth switch -h github.com -u "$prev" >/dev/null 2>&1; fi
+  github_status >/dev/null
+  [ -n "$new" ] || { echo "couldn't check the new login with GitHub" >&2; return 1; }
+  github_use "$new"
+}
+
+ghpush() { git -C "$1" -c credential.helper= -c 'credential.helper=!gh auth git-credential' push -q origin "${@:2}"; }
+
+# leak_check <dir> [strict]: prints what in the branches' history must not reach GitHub (nothing = safe).
+# "strict" (before going public) also refuses identities already on GitHub, such as the user's email on a
+# pull request merged on GitHub's site.
+leak_check() {
+  local d=$1 strict=${2:-} names who allowed=""
+  names=$(git -C "$d" log --branches --format= --name-only | sort -u)
+  grep -E '(^|/)(\.hatchlybox\.json|local\.properties|gradle\.properties|\.env)$|\.(p12|jks|keystore|pem|pass|apk|aab)$|service-account[^/]*\.json$|(^|/)google-services\.json$|^play/shots/' <<< "$names" \
+    | head -5 | sed 's/^/private file in the history: /'
+  # The code and the commit messages, which quote the user's requests.
+  leak_text "$(git -C "$d" log --branches -p --format=%B --no-ext-diff 2>/dev/null)" "the code"
+  # Commits must be hatchlybox's (or GitHub's own, or already on GitHub).
+  [ -n "$strict" ] || allowed=$(git -C "$d" log --remotes --format='%ae%n%ce' 2>/dev/null | sort -u)
+  who=$(git -C "$d" log --branches --format='%ae%n%ce' | sort -u | grep -vxE 'hatchlybox@localhost|noreply@github\.com|.*@users\.noreply\.github\.com' \
+    | grep -vxF -f <(printf '%s\n' "$allowed" | grep . || echo hatchlybox@localhost))
+  [ -n "$who" ] && echo "commits by $(head -1 <<< "$who") (not hatchlybox; merged on GitHub's site? Turn on Settings › Emails › Keep my email addresses private there)"
+  true
+}
+
+# leak_text <text> <where>: prints the keys and personal details in the text (nothing = safe).
+leak_text() {
+  local text=$1 where=$2 e what re
+  while IFS=$'\t' read -r what re; do
+    grep -qE -- "$re" <<< "$text" && echo "looks like $what in $where"
+  done <<'EOF'
+a private key	-----BEGIN [A-Z ]*PRIVATE KEY-----
+a Google service account key	"type": *"service_account"
+a Google API key	AIza[0-9A-Za-z_-]{35}
+a GitHub token	(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,})
+an Anthropic API key	sk-ant-[A-Za-z0-9_-]{20,}
+an OpenAI API key	sk-(proj-)?[A-Za-z0-9_-]{32,}
+an AWS key	AKIA[0-9A-Z]{16}
+a Slack token	xox[abprs]-[A-Za-z0-9-]{10,}
+a keystore password	(store|key)Password *= *"[^"]+"
+EOF
+  # Personal details this phone knows about: the user's emails, the Play key's account, the home path.
+  while read -r e; do
+    [ -n "$e" ] && grep -qiF -- "$e" <<< "$text" && echo "your email $e is in $where"
+  done < <(git config --global user.email 2>/dev/null; jq -r '(.emails // {})[], (.email // empty)' "$GHSTATE" 2>/dev/null
+           jq -r '.contact // empty' "$PSTATE" 2>/dev/null; jq -r '.email // empty' "$PSTATE" 2>/dev/null)
+  grep -qF -- "$HOME/" <<< "$text" && echo "a path on this phone ($HOME/…) is in $where"
+  true
+}
+
+# clean_history <dir>: before a first push only, rewrite the history without the private files and with
+# every commit as hatchlybox.
+clean_history() {
+  local d=$1
+  git -C "$d" log --branches --format= --name-only | grep -qxE '\.hatchlybox\.json|local\.properties|gradle\.properties|play/shots/.*' \
+    || [ -n "$(git -C "$d" log --branches --format='%ae%n%ce' | grep -vx 'hatchlybox@localhost')" ] || return 0
+  ( cd "$d" && FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f \
+      --index-filter "git rm -r --cached -q --ignore-unmatch ${PRIVATE_FILES[*]}" \
+      --env-filter 'export GIT_AUTHOR_NAME=hatchlybox GIT_AUTHOR_EMAIL=hatchlybox@localhost GIT_COMMITTER_NAME=hatchlybox GIT_COMMITTER_EMAIL=hatchlybox@localhost' \
+      -- --branches ) >/dev/null 2>&1 || { echo "couldn't clean the history" >&2; return 1; }
+  git -C "$d" for-each-ref --format='%(refname)' refs/original | xargs -r -n1 git -C "$d" update-ref -d
+  git -C "$d" reflog expire --expire=now --all && git -C "$d" gc -q --prune=now
+}
+
+# push_app <slug> <branch>: push after leak_check; a refusal is kept in .github.blocked for the front end.
+push_app() {
+  local slug=$1 br=$2 d=$APPS/$1 found
+  found=$(leak_check "$d")
+  if [ -n "$found" ]; then
+    meta "$slug" '.github.blocked=$m' --arg m "$(tr '\n' ';' <<< "$found" | sed 's/;$//; s/;/; /g')"
+    echo "not pushed to GitHub: $found" >&2; return 1
+  fi
+  ghpush "$d" "$br:$br" >> "$LOG" 2>&1 || { echo "couldn't push to GitHub: see the log" >&2; return 1; }
+  jq -e '.github.blocked' "$d/.hatchlybox.json" >/dev/null 2>&1 && meta "$slug" 'del(.github.blocked)'
+  true
+}
+
+# github_publish <slug> <private|public>: a new repo with the app's history.
+github_publish() {
+  local slug=$1 vis=${2:-private} d=$APPS/$1 login name i=2 base found label
+  login=$(jq -r '.account // empty' "$GHSTATE" 2>/dev/null)
+  [ -n "$login" ] && gh_on || { echo "pick a GitHub account for new apps first (setup tab)" >&2; return 1; }
+  use_account "$login" || { echo "$login isn't signed in on this phone any more: add it again (setup tab)" >&2; return 1; }
+  [ -z "$(jq -r '.github.repo // empty' "$d/.hatchlybox.json")" ] || { echo "$slug is on GitHub already" >&2; return 1; }
+  pending "$slug" && { echo "accept or discard the change waiting on $slug first" >&2; return 1; }
+  [[ $vis =~ ^(private|public)$ ]] || return 1
+  save "$slug" "Keep this phone's files out of git" || return 1
+  clean_history "$d" || return 1
+  found=$(leak_check "$d")
+  [ -z "$found" ] || { echo "not published, to keep it safe: $found" >&2; return 1; }
+  name=$slug
+  while gh repo view "$login/$name" >/dev/null 2>&1; do name=$slug-$i; i=$((i + 1)); done
+  label=$(jq -r '.label // .slug' "$d/.hatchlybox.json" | tr -d '\n' | head -c 60)
+  gh repo create "$login/$name" "--$vis" --disable-wiki --description "$label: an Android app made with Hatchlybox" >/dev/null 2>>"$LOG" \
+    || { echo "GitHub didn't create the repo: see the log" >&2; return 1; }
+  git -C "$d" remote remove origin >/dev/null 2>&1
+  git -C "$d" remote add origin "https://github.com/$login/$name.git"
+  base=$(git -C "$d" branch --show-current)
+  meta "$slug" '.github={repo:$r, account:$a, url:$u, visibility:$v, at:$t}' --arg r "$login/$name" --arg a "$login" --arg u "https://github.com/$login/$name" --arg v "$vis" --argjson t "$(now)"
+  push_app "$slug" "$base" || return 1
+  gh repo edit "$login/$name" --default-branch "$base" >/dev/null 2>&1
+  echo "on GitHub ($vis): https://github.com/$login/$name"
+}
+
+github_visibility() {
+  local slug=$1 vis=${2:-} d=$APPS/$1 repo found
+  repo=$(jq -r '.github.repo // empty' "$d/.hatchlybox.json")
+  [ -n "$repo" ] || { echo "$slug isn't on GitHub" >&2; return 1; }
+  [[ $vis =~ ^(private|public)$ ]] || return 1
+  app_gh "$slug" || { echo "Hatchlybox is logged out of $(app_account "$slug") on GitHub: use it again in setup" >&2; return 1; }
+  if [ "$vis" = public ]; then
+    found=$(leak_check "$d" strict)
+    [ -z "$found" ] || { echo "kept private, to keep it safe: $found" >&2; return 1; }
+  fi
+  gh repo edit "$repo" --visibility "$vis" --accept-visibility-change-consequences >/dev/null 2>>"$LOG" \
+    || { echo "GitHub refused the change: see the log" >&2; return 1; }
+  meta "$slug" '.github.visibility=$v' --arg v "$vis"
+  echo "$repo is $vis now"
+}
+
+# open_pr <slug>: push the change's branch and, the first time, open its pull request.
+open_pr() {
+  local slug=$1 d=$APPS/$1 repo b base req agent url found
+  repo=$(jq -r '.github.repo // empty' "$d/.hatchlybox.json")
+  [ -n "$repo" ] && app_gh "$slug" && pending "$slug" || return 0
+  b=$(pget "$slug" branch) base=$(pget "$slug" base) req=$(pget "$slug" request) agent=$(jq -r '.agent // "the agent"' "$d/.hatchlybox.json")
+  req="Update the app"
+  push_app "$slug" "$b" || return 1
+  [ -n "$(pget "$slug" pr)" ] && return 0
+  # The request is the pull request's text: it gets the same check as the code.
+  found=$(leak_text "$req" "the change request")
+  if [ -n "$found" ]; then
+    meta "$slug" '.github.blocked=$m' --arg m "$(tr '\n' ';' <<< "$found" | sed 's/;$//; s/;/; /g')"
+    echo "no pull request on GitHub: $found" >&2; return 1
+  fi
+  url=$(cd "$d" && gh pr create -R "$repo" --base "$base" --head "$b" --title "$(head -1 <<< "$req" | head -c 100)" \
+    --body "$(printf '%s\n\nWritten by %s and built on the phone by Hatchlybox. Accept or discard it in Hatchlybox, or merge or close this pull request.' "$req" "$agent")" 2>>"$LOG") \
+    || { echo "couldn't open the pull request: see the log" >&2; return 1; }
+  meta "$slug" '.pending.pr=$n | .pending.prUrl=$u' --argjson n "${url##*/}" --arg u "$url"
+}
+
+# github_sync: pull requests merged or closed on GitHub are accepted or discarded here too.
+github_sync() {
+  gh_on || return 0
+  local m slug pr repo st b base d
+  for m in "$APPS"/*/.hatchlybox.json; do
+    [ -f "$m" ] || continue
+    pr=$(jq -r '.pending.pr // empty' "$m"); repo=$(jq -r '.github.repo // empty' "$m")
+    [ -n "$pr" ] && [ -n "$repo" ] || continue
+    d=${m%/.hatchlybox.json}; slug=${d##*/}
+    job_running && [ "$(jq -r .slug "$JOB")" = "$slug" ] && continue
+    app_gh "$slug" || continue
+    st=$(timeout 30 gh pr view "$pr" -R "$repo" --json state -q .state 2>/dev/null)
+    case $st in
+      MERGED)
+        b=$(pget "$slug" branch) base=$(pget "$slug" base)
+        git -C "$d" -c credential.helper= -c 'credential.helper=!gh auth git-credential' fetch -q origin "$base" \
+          && gq "$d" checkout -q "$base" && { gq "$d" merge -q --ff-only "origin/$base" >/dev/null 2>&1 \
+            || { gq "$d" merge -q --no-ff "origin/$base" -m "Merge what GitHub merged" >/dev/null 2>&1 || { gq "$d" merge --abort >/dev/null 2>&1; false; }; }; } \
+          && finish_change "$slug" && echo "$slug: merged on GitHub" ;;
+      CLOSED) discard_change "$slug" closed >/dev/null && echo "$slug: closed on GitHub, discarded" ;;
+    esac
+  done
+}
+
+github_cmd() {
+  umask 077
+  local sub=${1:-}; shift || true
+  case $sub in
+    status) github_status ;;
+    use) [ -n "${1:-}" ] || exit 1; github_use "$1" ;;
+    resume) [ -n "${1:-}" ] || exit 1; github_resume "$1" ;;
+    logout) [ -n "${1:-}" ] || exit 1; github_logout "$1" ;;
+    signout) [ -n "${1:-}" ] || exit 1; github_signout "$1" ;;
+    add) github_add ;;
+    # Before accounts: on = gh's active login, off = log out of the account for new apps.
+    on) github_status >/dev/null; github_use "$(jq -r '.accounts[0].login // empty' "$GHSTATE")" ;;
+    off) github_logout "$(jq -r '.account // empty' "$GHSTATE")" ;;
+    auto) [[ ${1:-} =~ ^(on|off)$ ]] || exit 1; ghs '.auto=($v == "on")' --arg v "$1" ;;
+    publish) need_app "${1:-}"; git_lock; github_publish "$1" "${2:-private}" ;;
+    visibility) need_app "${1:-}"; git_lock; github_visibility "$1" "${2:-}" ;;
+    check) need_app "${1:-}"; f=$(leak_check "$APPS/$1"); if [ -n "$f" ]; then echo "$f"; exit 1; else echo "nothing private found"; fi ;;
+    # Busy: the next sync, two minutes on, catches up.
+    sync) git_lock now || exit 0; github_sync ;;
+    *) echo "usage: hatchlybox github status | use <login> | resume <login> | logout <login> | signout <login> | add | auto on|off | publish <slug> [private|public] | visibility <slug> private|public | check <slug> | sync" >&2; exit 1 ;;
+  esac
+}
+
+# ---- Google Play: a service account uploads; each app gets its own upload key ----
+#
+# What Google requires by hand, once: a developer account; a Cloud project with the Google Play Android
+# Developer API on, a service account in it and its JSON key (the front end's connect page takes the key);
+# that account invited in Play Console with release rights. Then, once per app: create it in Play Console
+# and upload its first .aab there (Play learns the package name from that upload; the API can't create
+# apps), and fill in the "App content" forms. After that everything goes through the API.
+
+PLAY=$DATA/play
+SA=$PLAY/service-account.json
+KEYS=$DATA/keys
+PSTATE=$CACHE/play.json
+API=https://androidpublisher.googleapis.com/androidpublisher/v3/applications
+UPAPI=https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications
+KEY_PORT=8766
+
+b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+
+# pstate <jq filter> [args...]: edit play.json, the account's state for the front end.
+# play_token [key file]: an access token for the service account. It's never written to disk (a token
+# lets anyone publish for an hour); one from an older version is removed.
+play_token() {
+  local sa=${1:-$SA}
+  rm -f "$CACHE/play-token.json"
+  [ -f "$sa" ] || { if locked_mode && sa_known; then echo "Google Play is locked: unlock it in a terminal" >&2; else echo "Google Play isn't connected: connect it on the front end's play tab" >&2; fi; return 1; }
+  local email uri t h p key sig r tok
+  email=$(jq -r .client_email "$sa"); uri=$(jq -r '.token_uri // "https://oauth2.googleapis.com/token"' "$sa")
+  t=$(now)
+  h=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+  p=$(jq -nc --arg e "$email" --arg a "$uri" --argjson t "$t" \
+    '{iss:$e, scope:"https://www.googleapis.com/auth/androidpublisher", aud:$a, iat:$t, exp:($t + 3600)}' | b64url)
+  key=$(mktemp "$CACHE/.key.XXXX")
+  jq -r .private_key "$sa" > "$key"
+  sig=$(printf '%s.%s' "$h" "$p" | openssl dgst -sha256 -sign "$key" 2>/dev/null | b64url)
+  rm -f "$key"
+  [ -n "$sig" ] || { echo "the key file's private key doesn't work: download a new JSON key" >&2; return 1; }
+  r=$(printf 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=%s.%s.%s' "$h" "$p" "$sig" | curl -sS --max-time 30 --data @- "$uri" 2>&1)
+  tok=$(jq -r '.access_token // empty' <<< "$r" 2>/dev/null)
+  if [ -z "$tok" ]; then
+    echo "Google refused the key: $(jq -r '.error_description // .error // empty' <<< "$r" 2>/dev/null || head -c 200 <<< "$r")" >&2
+    return 1
+  fi
+  echo "$tok"
+}
+
+# gp <METHOD> <url> [curl args...]: a Play API call; sets GP_CODE and GP_BODY, fails unless 2xx.
+gp() {
+  local m=$1 u=$2 out; shift 2
+  # The token goes in through a pipe, not the command line, where other programs could read it.
+  out=$(curl -sS --max-time 900 -X "$m" -K <(printf 'header = "Authorization: Bearer %s"\n' "$TOKEN") "$@" -w '\n%{http_code}' "$u" 2>&1)
+  GP_CODE=${out##*$'\n'}; GP_BODY=${out%$'\n'*}
+  echo "   $m ${u#https://androidpublisher.googleapis.com/} → $GP_CODE" >> "$LOG"
+  [[ $GP_CODE == 2* ]] || { echo "   $(gp_err)" >> "$LOG"; return 1; }
+}
+gp_json() { gp "$1" "$2" -H 'Content-Type: application/json' --data-binary "$3"; }
+gp_err() { { jq -r '.error.message // empty' <<< "$GP_BODY" 2>/dev/null || head -c 300 <<< "$GP_BODY"; } | head -c 400; }
+
+# The last API error, as what to do about it.
+gp_explain() {
+  local m; m=$(gp_err); [ -n "$m" ] || m="HTTP $GP_CODE"
+  case $m in
+    *"has not been used in project"*|*"it is disabled"*)
+      echo "turn on the Google Play Android Developer API for the key's Cloud project, wait a few minutes, then retry" ;;
+    *"Package not found"*|*"package not found"*)
+      echo "not on Google Play yet: create the app in Play Console and upload its first .aab there by hand (play tab: \"put it on Play\")" ;;
+    *"does not have permission"*|*"caller does not have"*|*"permission"*)
+      # The recommended setup: the key releases to testing only, going live is a tap in Play Console.
+      if [ "${UPLOAD_WORD:-}" = production ]; then
+        echo "the Play key can release to testing only (the safe setup): go live in Play Console › your app › Test and release › Production › promote the release"
+        return
+      fi
+      echo "the service account can't manage this app: in Play Console › Users and permissions, give $(jq -r '.email // "the service account"' "$PSTATE") release rights for it" ;;
+    *"version code"*"already been used"*)
+      echo "Play already has this version: prepare again to build a newer one" ;;
+    *) echo "Google Play said: $m" ;;
+  esac
+}
+
+# ---- the vault: the Play key and the upload keys, encrypted with a passphrase that is never stored ----
+#
+# Everything on this phone runs as one user, so any program (a coding agent too) can read any file here.
+# The secrets that publish apps are kept encrypted in $VAULT (one file each, AES-256, PBKDF2) and decrypted
+# only in a terminal, after the passphrase is typed, into a private folder ($U) that lives as long as
+# that terminal's step: sign, upload, back up. No agent runs then (run_agent refuses). Before the user
+# locks them (hatchlybox lock), they stay as they always were: plain files in $PLAY and $KEYS.
+
+VAULT=$DATA/vault
+U=""
+locked_mode() { [ -f "$VAULT/check.enc" ]; }
+sa_known() { [ -f "$SA" ] || [ -f "$VAULT/service-account.json.enc" ]; }
+key_known() { [ -s "$KEYS/$1.p12" ] || [ -f "$VAULT/keys/$1.p12.enc" ]; }
+
+# vault_enc <file> <vault name> | vault_dec <vault name> <file|->: the passphrase ($VP) goes to openssl
+# through a pipe, never its command line or environment, where other programs could read it.
+vault_enc() {
+  mkdir -p "$(dirname "$VAULT/$2")"
+  openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass fd:3 -in "$1" -out "$VAULT/$2.enc.tmp" 3< <(printf '%s\n' "$VP") \
+    && mv "$VAULT/$2.enc.tmp" "$VAULT/$2.enc"
+}
+vault_dec() {
+  if [ "$2" = - ]; then openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass fd:3 -in "$VAULT/$1.enc" 3< <(printf '%s\n' "$VP") 2>/dev/null
+  else openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass fd:3 -in "$VAULT/$1.enc" -out "$2" 3< <(printf '%s\n' "$VP") 2>/dev/null; fi
+}
+# vault_put <file> <vault name>: encrypt, then check it decrypts to the same bytes.
+vault_put() {
+  local t; t=$(mktemp "$CACHE/.vault.XXXX")
+  vault_enc "$1" "$2" && vault_dec "$2" "$t" && cmp -s "$1" "$t"; local rc=$?
+  rm -f "$t"; return $rc
+}
+vault_check() { [ "$(vault_dec check -)" = hatchlybox-vault ]; }
+
+# ask_pass [prompt]: the vault's passphrase, typed in the terminal (three tries); sets VP.
+ask_pass() {
+  [ -t 0 ] || { echo "this needs your passphrase: run it in a terminal" >&2; return 1; }
+  local i
+  for i in 1 2 3; do
+    IFS= read -rsp "${1:-passphrase}: " VP; echo
+    vault_check && return 0
+    echo "that isn't the passphrase" >&2
+  done
+  VP=""; return 1
+}
+
+# new_pass: a new passphrase, typed twice; sets VP.
+new_pass() {
+  [ -t 0 ] || { echo "this needs a new passphrase: run it in a terminal" >&2; return 1; }
+  local again
+  IFS= read -rsp "new passphrase (10 or more characters; nothing shows as you type): " VP; echo
+  IFS= read -rsp "again: " again; echo
+  [ "$VP" = "$again" ] || { echo "the two didn't match" >&2; VP=""; return 1; }
+  [ ${#VP} -ge 10 ] || { echo "use 10 or more characters" >&2; VP=""; return 1; }
+}
+
+# open_secrets [slug]: decrypt the Play key and that app's upload key into a private folder, and point
+# $SA and $KEYS at it until the program ends. Without a vault, the plain files are used as before.
+open_secrets() {
+  locked_mode || return 0
+  [ -n "$U" ] && return 0
+  # Named after this process, so a later run can tell a folder whose owner was killed (see sweep_unlocked).
+  U=$(mktemp -d "$CACHE/.unlocked.$$.XXXX") || return 1
+  trap close_secrets EXIT
+  trap 'close_secrets; exit 130' INT TERM HUP
+  mkdir -p "$U/keys"
+  if [ -f "$VAULT/service-account.json.enc" ]; then vault_dec service-account.json "$U/service-account.json" || { close_secrets; return 1; }; fi
+  if [ -n "${1:-}" ] && [ -f "$VAULT/keys/$1.p12.enc" ]; then
+    vault_dec "keys/$1.p12" "$U/keys/$1.p12" && vault_dec "keys/$1.pass" "$U/keys/$1.pass" || { close_secrets; return 1; }
+  fi
+  SA=$U/service-account.json KEYS=$U/keys
+}
+close_secrets() { [ -n "$U" ] && rm -rf "$U"; U=""; }
+
+# sweep_unlocked: remove decrypted folders left by a process that was killed before it could (the phone
+# can kill a terminal at any time). Run at every start; a live owner keeps its folder.
+sweep_unlocked() {
+  local d p
+  for d in "$CACHE"/.passwd.*; do [ ! -d "$d" ] || rm -rf "$d"; done
+  for d in "$CACHE"/.unlocked.*; do
+    [ -d "$d" ] || continue
+    p=${d#"$CACHE"/.unlocked.}; p=${p%%.*}
+    if ! [[ $p =~ ^[0-9]+$ ]] || ! kill -0 "$p" 2>/dev/null; then rm -rf "$d"; fi
+  done
+}
+
+# lock_migrate: put any plain Play key and upload keys in the vault ($VP set), check each, then remove them.
+lock_migrate() {
+  local f n=0 plainSA=$PLAY/service-account.json plainKeys=$DATA/keys
+  if [ -f "$plainSA" ]; then vault_put "$plainSA" service-account.json || return 1; n=$((n + 1)); fi
+  for f in "$plainKeys"/*.p12 "$plainKeys"/*.pass; do
+    [ -f "$f" ] || continue
+    vault_put "$f" "keys/${f##*/}" || return 1; n=$((n + 1))
+  done
+  rm -f "$plainSA" "$plainKeys"/*.p12 "$plainKeys"/*.pass "$CACHE/play-token.json"
+  echo "$n"
+}
+
+# ensure_vault: unlock the vault, or make it (and move any plain keys into it) on first use.
+ensure_vault() {
+  if locked_mode; then ask_pass; return; fi
+  echo "Pick a passphrase that locks your Google Play key and your apps' upload keys."
+  echo "You type it only when you sign, upload or back up. It isn't stored anywhere: if you forget it,"
+  echo "the keys are lost (back them up with \"back up key\" on the play tab)."
+  new_pass || return 1
+  mkdir -p "$VAULT"
+  local t; t=$(mktemp "$CACHE/.vault.XXXX"); printf 'hatchlybox-vault' > "$t"
+  vault_enc "$t" check; rm -f "$t"
+  vault_check || { echo "couldn't make the vault" >&2; rm -rf "$VAULT"; return 1; }
+  local n; n=$(lock_migrate) || { echo "couldn't lock the keys: they're still where they were" >&2; return 1; }
+  [ "$n" -gt 0 ] && echo "locked $n key files"
+  pstate '.locked=true'
+}
+
+# keys_state: locked | plain (keys not locked yet) | none, for the front end.
+keys_state() {
+  if [ -f "$PLAY/service-account.json" ] || ls "$DATA/keys"/*.p12 >/dev/null 2>&1; then echo plain
+  elif locked_mode; then echo locked
+  else echo none; fi
+}
+
+lock_cmd() {
+  umask 077
+  case ${1:-} in
+    passwd)
+      locked_mode || { echo "nothing is locked yet: hatchlybox lock" >&2; exit 1; }
+      ask_pass "current passphrase" || exit 1
+      rotate_vault || { echo 'passphrase rotation failed; original vault retained' >&2; exit 1; } ;;
+    off)
+      # Back to plain files: everything is decrypted and checked before the vault goes.
+      locked_mode || { echo "your keys aren't locked" >&2; exit 0; }
+      ask_pass || exit 1
+      local t f; t=$(mktemp -d "$CACHE/.unlocked.$$.XXXX")
+      while IFS= read -r f; do
+        f=${f#"$VAULT"/}; f=${f%.enc}; [ "$f" = check ] && continue
+        mkdir -p "$t/$(dirname "$f")"
+        vault_dec "$f" "$t/$f" || { rm -rf "$t"; echo "couldn't open $f: nothing changed" >&2; exit 1; }
+      done < <(find -L "$VAULT" -name '*.enc')
+      mkdir -p "$PLAY" "$DATA/keys"
+      [ -f "$t/service-account.json" ] && mv "$t/service-account.json" "$PLAY/service-account.json"
+      for f in "$t"/keys/*; do [ -f "$f" ] && mv "$f" "$DATA/keys/"; done
+      chmod 600 "$PLAY"/*.json "$DATA"/keys/* 2>/dev/null
+      rm -rf "$t" "$VAULT"
+      pstate '.locked=false'
+      echo "Your keys aren't locked any more: signing and uploading don't ask for a passphrase." ;;
+    "")
+      ensure_vault || exit 1
+      # Locked already: any key files left plain (made before, or restored by hand) go in too.
+      local n; n=$(lock_migrate) || { echo "couldn't lock the keys" >&2; exit 1; }
+      [ "$n" -gt 0 ] && echo "locked $n more key files"
+      echo "Your Google Play key and upload keys are locked." ;;
+    *) echo "usage: hatchlybox lock | lock passwd | lock off" >&2; exit 1 ;;
+  esac
+}
+
+# unlock, in a terminal: finish the job waiting for the passphrase (sign, upload) right here, with the
+# keys open only until it's done.
+unlock_cmd() {
+  umask 077
+  [ "$(jq -r '.phase // empty' "$JOB" 2>/dev/null)" = locked ] || { echo "nothing is waiting to be unlocked" >&2; exit 1; }
+  local k s x; k=$(jq -r .kind "$JOB") s=$(jq -r .slug "$JOB") x=$(jq -r '.arg // empty' "$JOB")
+  need_app "$s"
+  echo "$(jq -r .msg "$JOB") ($(jq -r '.label // .slug' "$APPS/$s/.hatchlybox.json"))"
+  ask_pass || exit 1
+  open_secrets "$s" || { echo "couldn't open the vault" >&2; exit 1; }
+  # This terminal is the job's process now: the front end follows it.
+  jobset '.pid=$p' --argjson p $$
+  tail -n0 -f "$LOG" 2>/dev/null & local tp=$!
+  local rc=0
+  case $k in
+    play-prepare) play_prepare_finish "$s" || rc=1 ;;
+    play-upload) play_upload_go "$s" "$x" || rc=1 ;;
+    *) job failed "nothing to unlock for"; rc=1 ;;
+  esac
+  sleep 1; kill $tp 2>/dev/null
+  close_secrets
+  list_apps
+  echo; echo "$(jq -r .msg "$JOB")"
+  return $rc
+}
+
+# ---- the account ----
+
+# play_key <file>: check a service account key with Google, then keep it.
+play_key() {
+  local in=$1
+  if ! jq -e '.type == "service_account" and (.private_key | length > 0) and (.client_email | length > 0)' "$in" >/dev/null 2>&1; then
+    pstate '.state="error" | .msg=$m | .checked=$t' --arg m "that file isn't a service account JSON key" --argjson t "$(now)"
+    echo "that file isn't a service account JSON key" >&2; return 1
+  fi
+  pstate '.state="checking" | .msg=""'
+  local err; err=$(play_token "$in" 2>&1 >/dev/null)
+  if [ -n "$err" ]; then
+    pstate '.state="error" | .msg=$m | .checked=$t' --arg m "$err" --argjson t "$(now)"
+    echo "$err" >&2; return 1
+  fi
+  # Kept only in the vault (the key arrives through the browser, into the vault's own private copy).
+  if locked_mode; then
+    vault_put "$in" service-account.json || { echo "couldn't lock the key" >&2; return 1; }
+    rm -f "$PLAY/service-account.json"
+  else
+    mkdir -p "$PLAY"; cp "$in" "$PLAY/service-account.json.new" && chmod 600 "$PLAY/service-account.json.new" && mv "$PLAY/service-account.json.new" "$PLAY/service-account.json"
+  fi
+  pstate '.state="connected" | .email=$e | .project=$p | .msg="" | .checked=$t | .locked=$l' \
+    --arg e "$(jq -r .client_email "$in")" --arg p "$(jq -r '.project_id // ""' "$in")" --argjson t "$(now)" \
+    --argjson l "$(locked_mode && echo true || echo false)"
+  echo "connected as $(jq -r .client_email "$in")"
+}
+
+# connect: a one-time page in the phone's browser takes the key file (there's no file picker in here).
+# Normally that's all (the front end opens the page and the key is checked in the background). With the
+# optional passphrase lock on, it runs in a terminal: unlock, then the key goes straight into the vault.
+play_connect() {
+  local tok in=$CACHE/.play-key-in url i
+  if ! locked_mode; then
+    tok=$(head -c 12 /dev/urandom | b64url)
+    pkill -f "Serve.java receive $KEY_PORT " 2>/dev/null
+    rm -f "$in"
+    setsid -f bash -c 'java -Xmx48m "$1/bin/Serve.java" receive "$2" "$3" "$4" && "$5" play key "$4" >/dev/null 2>&1; rm -f "$4"' \
+      _ "$DATA" "$KEY_PORT" "$tok" "$in" "$0" >/dev/null 2>&1 < /dev/null 5>&- 6>&- 7>&- 8>&- 9>&-
+    for _ in $(seq 30); do curl -s -o /dev/null "http://127.0.0.1:$KEY_PORT/" && break; sleep 0.5; done
+    pstate '.state=(if .email then .state else "waiting" end) | .msg="pick the key file in the browser"'
+    echo "http://127.0.0.1:$KEY_PORT/$tok"
+    return 0
+  fi
+  [ -t 0 ] || { echo "your keys are locked: connect in a terminal (hatchlybox play connect)" >&2; return 1; }
+  ask_pass || return 1
+  tok=$(head -c 12 /dev/urandom | b64url)
+  pkill -f "Serve.java receive $KEY_PORT " 2>/dev/null
+  rm -f "$in"
+  trap 'rm -f "$in"; pkill -f "Serve.java receive $KEY_PORT " 2>/dev/null' EXIT
+  setsid -f java -Xmx48m "$DATA/bin/Serve.java" receive "$KEY_PORT" "$tok" "$in" >/dev/null 2>&1 < /dev/null 5>&- 6>&- 7>&- 8>&- 9>&-
+  for _ in $(seq 30); do curl -s -o /dev/null "http://127.0.0.1:$KEY_PORT/" && break; sleep 0.5; done
+  url="http://127.0.0.1:$KEY_PORT/$tok"
+  pstate '.state=(if .email then .state else "waiting" end) | .msg="pick the key file in the browser"'
+  xdg-open "$url" >/dev/null 2>&1 || echo "Open this in the browser: $url"
+  echo "In the browser, pick the service account's JSON key (usually in Downloads). Waiting up to 15 minutes…"
+  for i in $(seq 900); do [ -s "$in" ] && break; sleep 1; done
+  [ -s "$in" ] || { pstate '.state=(if .email then "connected" else "none" end) | .msg=""'; echo "no key arrived: run it again" >&2; return 1; }
+  sleep 1
+  play_key "$in"
+}
+
+play_status() {
+  if ! sa_known; then pstate '.state="none" | del(.email, .project) | .msg=""'; [ -t 1 ] && echo "Google Play isn't connected" || { cat "$PSTATE"; echo; }; return; fi
+  # Locked: checked when there's a passphrase to unlock it with (a terminal), else it just says so.
+  if locked_mode && [ -z "$U" ]; then
+    if [ -t 0 ]; then ask_pass && open_secrets || return 1
+    else pstate '.state="connected" | .locked=true | .msg=""'; cat "$PSTATE"; echo; return; fi
+  fi
+  local err; err=$(play_token 2>&1 >/dev/null)
+  if [ -n "$err" ]; then pstate '.state="error" | .msg=$m | .checked=$t' --arg m "$err" --argjson t "$(now)"
+  else pstate '.state="connected" | .email=$e | .msg="" | .checked=$t' --arg e "$(jq -r .client_email "$SA")" --argjson t "$(now)"; fi
+  if [ -t 1 ]; then
+    if [ -n "$err" ]; then echo "$err"; else echo "Google Play accepts the key ($(jq -r .client_email "$SA"))"; fi
+  else cat "$PSTATE"; echo; fi
+}
+
+# ---- one app: listing, upload key, signed bundle, graphics ----
+
+# pmeta <slug> <jq filter> [args...]: edit the app's .play object.
+pmeta() { local s=$1 f=$2; shift 2; meta "$s" ".play=(.play // {}) | .play |= ($f)" "$@"; }
+
+listing_prompt() {
+  cat <<'EOF'
+Write the Google Play store listing for this Android app. Read the code first so it describes what the
+app really does. Don't change the app's code and don't run Gradle.
+
+1. Create play/listing.json with exactly these keys (plain text, no Markdown):
+   "title": the app's name on Play, at most 30 characters
+   "shortDescription": one sentence, at most 80 characters
+   "fullDescription": 2-4 short paragraphs, may include a list of features with "• ", at most 4000 characters
+   "language": the Google Play code of the language you wrote it in, such as "en-US", "fr-FR" or "pt-BR".
+     Write in the language of the app's own texts.
+   "releaseNotes": what this version brings, for users, at most 500 characters
+   "category": the one Google Play category that fits best (e.g. "Tools", "Productivity", "Puzzle")
+   "dataCollected": true only if the app sends any user data off the phone
+2. Create play/privacy-policy.md: a short, honest privacy policy for this app: what it stores, where
+   (on the device only, if so), what it sends anywhere and to whom (nothing, if so), and a last line
+   "Contact: " followed by nothing (the developer adds an email).
+
+Follow Google Play's metadata policy: no emoji, ALL CAPS or "best", "#1", "free", "new", prices or
+promotions in the title; no calls to action such as "download now"; no keyword lists; no other apps' or
+companies' names; don't claim features the app doesn't have.
+EOF
+}
+
+# The agent's listing, cut to Play's limits; fails when the file is missing or not JSON.
+listing_ok() {
+  local f=$APPS/$1/play/listing.json tmp
+  jq -e '(.title | type == "string" and length > 0) and (.shortDescription | type == "string") and (.fullDescription | type == "string")' "$f" >/dev/null 2>&1 \
+    || return 1
+  tmp=$(mktemp "$CACHE/.listing.XXXX")
+  jq '.title |= .[0:30] | .shortDescription |= .[0:80] | .fullDescription |= .[0:4000] | .releaseNotes = ((.releaseNotes // "") | .[0:500]) | .language = ((.language // "") | if test("^[a-z]{2,3}(-[A-Z]{2})?$") then . else "en-US" end)' "$f" > "$tmp" \
+    && mv "$tmp" "$f" && pmeta "$1" '.title=$l.title | .lang=$l.language | (if .uploaded == null then .notes=$l.releaseNotes else . end) | .category=$l.category | .dataCollected=($l.dataCollected == true)' --argjson l "$(jq -c . "$f")"
+}
+
+# play_upload_key <slug>: the app's own upload key, made once and kept outside the project.
+play_upload_key() {
+  local slug=$1
+  [ -s "$KEYS/$slug.p12" ] && [ -s "$KEYS/$slug.pass" ] && return 0
+  mkdir -p "$KEYS"; chmod go-rwx "$KEYS"
+  local pass name
+  pass=$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 28)
+  name=$(jq -r '.label // .slug' "$APPS/$slug/.hatchlybox.json" | tr -dc 'A-Za-z0-9 ._-' | head -c 40)
+  # The password goes in through the environment, not the command line, where other programs could read it.
+  KS_PASS=$pass keytool -genkeypair -keystore "$KEYS/$slug.p12" -storetype PKCS12 -storepass:env KS_PASS -keypass:env KS_PASS -alias upload \
+    -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=${name:-$slug}, O=Hatchlybox" >> "$LOG" 2>&1 || return 1
+  printf '%s\n' "$pass" > "$KEYS/$slug.pass"
+  chmod 600 "$KEYS/$slug.p12" "$KEYS/$slug.pass"
+  if locked_mode; then
+    vault_put "$KEYS/$slug.p12" "keys/$slug.p12" && vault_put "$KEYS/$slug.pass" "keys/$slug.pass" \
+      || { echo "couldn't lock the new upload key" >> "$LOG"; return 1; }
+    echo "made the upload key of $slug (locked in the vault)" >> "$LOG"
+  else echo "made the upload key $KEYS/$slug.p12" >> "$LOG"; fi
+}
+
+# play_versions <slug> <code>: target Android 16 and set the version, in app/build.gradle.kts.
+play_versions() {
+  local slug=$1 vc=$2 dir=$APPS/$1 g=$APPS/$1/app/build.gradle.kts
+  local vn="1.$((vc - 1))"
+  if is_godot "$dir"; then
+    godot_versions "$slug" "$vc" "$vn" || { echo "couldn't set version/code $vc in godot/export_presets.cfg" >> "$LOG"; return 1; }
+    PLAY_VC=$vc PLAY_VN=$vn; return 0
+  fi
+  sed -i -E 's/(compileSdk *= *)(2[0-9]|3[0-5])\b/\136/; s/(targetSdk *= *)(2[0-9]|3[0-5])\b/\136/' "$g"
+  sed -i -E "s/(versionCode *= *)[0-9]+/\1$vc/; s/(versionName *= *)\"[^\"]*\"/\1\"$vn\"/" "$g"
+  grep -qE 'targetSdk *= *(3[6-9]|[4-9][0-9])' "$g" && grep -qE "versionCode *= *$vc\b" "$g" || {
+    echo "couldn't set targetSdk 36 and versionCode $vc in app/build.gradle.kts" >> "$LOG"; return 1; }
+  grep -q suppressUnsupportedCompileSdk "$dir/gradle.properties" 2>/dev/null \
+    || printf '\nandroid.suppressUnsupportedCompileSdk=36\n' >> "$dir/gradle.properties"
+  PLAY_VC=$vc PLAY_VN=$vn
+}
+
+# do_bundle <slug>: the release .aab, signed with the app's upload key.
+# do_bundle_check <slug>: the release bundle signed with the debug key, to get the code building (with the
+# agent's fixes) while the upload key stays locked. Signing it afterwards rebuilds only the packaging.
+do_bundle_check() {
+  local slug=$1 dir=$APPS/$1
+  if is_godot "$dir"; then
+    echo "== Godot app bundle (version ${PLAY_VN:-?}, code ${PLAY_VC:-?})" >> "$LOG"
+    godot_build "$slug" && godot_aab "$slug"; return
+  fi
+  echo "== gradle bundleRelease (version ${PLAY_VN:-?}, code ${PLAY_VC:-?}; signed once unlocked)" >> "$LOG"
+  reap_orphans
+  ( cd "$dir" && isolated build "$dir" timeout 30m ./gradlew --console=plain -q -Dorg.gradle.daemon.idletimeout=600000 bundleRelease ) >> "$LOG" 2> "$CACHE/build-err.txt"
+  local rc=$?
+  cat "$CACHE/build-err.txt" >> "$LOG"
+  return $rc
+}
+
+# play_build <slug> <agent> <code>: set the version, then build (the agent fixes errors). Locked, that's a
+# test bundle and NEED_SIGN is set: play_sign signs it once unlocked. Unlocked, no agent runs at all.
+play_build() {
+  local slug=$1 agent=$2 vc=$3
+  [ -n "$U" ] && agent=""
+  play_versions "$slug" "$vc" || { job failed "couldn't set the version in app/build.gradle.kts: see the log"; return 1; }
+  if locked_mode && [ -z "$U" ]; then
+    build_fixing "$slug" "$agent" do_bundle_check "app bundle, version $PLAY_VN" || return 1
+    NEED_SIGN=1; return 0
+  fi
+  play_sign "$slug" "$agent"
+}
+
+# play_sign <slug> [agent]: the upload key (made the first time), then the signed bundle.
+play_sign() {
+  local slug=$1 agent=${2:-}
+  [ -n "$U" ] && agent=""
+  play_upload_key "$slug" || { job failed "couldn't make the upload key: see the log"; return 1; }
+  build_fixing "$slug" "$agent" do_bundle "signed app bundle, version $PLAY_VN" || return 1
+  save "$slug" "Google Play: version $PLAY_VN ($PLAY_VC)" || { job failed "could not commit the release"; return 1; }
+  if app_gh "$slug"; then push_app "$slug" "$(git -C "$APPS/$slug" branch --show-current)" 2>> "$LOG"; fi
+  true
+}
+
+# play_art <slug>: icon, feature graphic and, over adb, screenshots of the app running.
+play_art() {
+  local slug=$1 dir=$APPS/$1 pd=$APPS/$1/play res=$APPS/$1/app/src/main/res pkg title
+  pkg=$(jq -r .pkg "$dir/.hatchlybox.json")
+  title=$(jq -r '.title // empty' "$pd/listing.json" 2>/dev/null); title=${title:-$(jq -r '.label // .slug' "$dir/.hatchlybox.json")}
+  mkdir -p "$pd/shots"; rm -f "$pd"/shots/*.png
+  pmeta "$slug" '.graphics="unverified" | del(.graphicsSource)'
+  job art "store icon and feature graphic"
+  # A Godot game's icon is its config/icon, drawn by Godot; PlayArt then takes that PNG for both.
+  is_godot "$dir" && { godot_icon "$slug" "$pd/icon.png" && res=$pd/icon.png || echo "Godot couldn't draw the icon" >> "$LOG"; }
+  { [ "$res" = "$pd/icon.png" ] || java -Xmx160m "$DATA/bin/PlayArt.java" icon "$res" "$pd/icon.png" >> "$LOG" 2>&1; } \
+    && java -Xmx160m "$DATA/bin/PlayArt.java" feature "$res" "$title" "$pd/feature.png" >> "$LOG" 2>&1 \
+    || echo "couldn't draw the store graphics: see the log above" >> "$LOG"
+  # Screenshots need the app on screen: install it if it isn't, open it, capture, tap, capture.
+  if adb_reconnect; then
+    job art "screenshots over adb"
+    if artifact_ok "$slug" apk "$CACHE/apks/$slug.apk"; then
+      do_install "$slug" job >> "$LOG" 2>&1 || { pmeta "$slug" '.graphics="unverified"'; return 1; }
+    fi
+    if artifact_ok "$slug" apk "$CACHE/apks/$slug.apk" && [ "$(jq -r .installedArtifact.sha256 "$dir/.hatchlybox.json")" = "$(jq -r .artifacts.apk.sha256 "$dir/.hatchlybox.json")" ]; then
+      mkdir -p "$pd/shots"; rm -f "$pd"/shots/*.png
+      local size w h i
+      size=$(adb shell wm size 2>/dev/null | awk -F': ' '/size/ {s=$2} END {print s}' | tr -d '\r')
+      w=${size%x*}; h=${size#*x}; w=${w:-1080}; h=${h:-2400}
+      adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+      adb shell am force-stop "$pkg" >/dev/null 2>&1
+      adb shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+      sleep 4
+      for i in 1 2 3; do
+        adb exec-out screencap -p > "$CACHE/shot.png" 2>/dev/null \
+          && java -Xmx160m "$DATA/bin/PlayArt.java" shot "$CACHE/shot.png" "$pd/shots/$i.png" >> "$LOG" 2>&1
+        # A tap and a swipe to show a little more of the app.
+        [ $i = 1 ] && adb shell input tap $((w / 2)) $((h / 2)) >/dev/null 2>&1
+        [ $i = 2 ] && adb shell input swipe $((w / 2)) $((h * 2 / 3)) $((w / 2)) $((h / 3)) 300 >/dev/null 2>&1
+        sleep 2
+      done
+      rm -f "$CACHE/shot.png"
+      adb shell input keyevent KEYCODE_HOME >/dev/null 2>&1
+    fi
+  fi
+  local shots; shots=$(ls "$pd"/shots/*.png 2>/dev/null | wc -l)
+  pmeta "$slug" '.graphics=$s | .graphicsSource=$source' --arg s "$([ "$shots" -ge 2 ] && echo captured || echo missing-screenshots)" --arg source "$(source_id "$slug")"
+  pmeta "$slug" '.icon=$i | .feature=$f | .shots=$s' \
+    --argjson i "$([ -s "$pd/icon.png" ] && echo true || echo false)" --argjson f "$([ -s "$pd/feature.png" ] && echo true || echo false)" --argjson s "$shots"
+}
+
+# The prepare job: listing (agent), Android 16 + version + signed .aab, graphics.
+play_prepare() {
+  local slug=$1 agent=$2 relist=${3:-} dir=$APPS/$1 pd=$APPS/$1/play
+  mkdir -p "$pd"
+  if [ -n "$relist" ] || ! listing_ok "$slug"; then
+    job agent "$agent is writing the store listing"
+    run_agent "$agent" "$dir" "$(listing_prompt)"
+    if agent_needs_login $?; then job failed "$agent isn't logged in — open the terminal to log in, then retry"; return 1; fi
+    listing_ok "$slug" || { job failed "$agent didn't write a usable play/listing.json: retry, or write it in the terminal"; return 1; }
+    pmeta "$slug" '.listed=$t' --argjson t "$(now)"
+  fi
+  # A version newer than anything built or seen on Play.
+  local cur vc
+  if is_godot "$dir"; then cur=$(godot_version_code "$slug")
+  else cur=$(grep -oE 'versionCode *= *[0-9]+' "$dir/app/build.gradle.kts" | grep -oE '[0-9]+$' | head -1); fi
+  vc=$(jq -r --argjson c "${cur:-1}" '.play as $p | if $p.vc == null and $p.remote == null then $c else ([$p.vc // 0, $p.remote // 0] | max) + 1 end' "$dir/.hatchlybox.json")
+  NEED_SIGN=""
+  play_build "$slug" "$agent" "$vc" || return 1
+  do_build "$slug" || { job failed "could not build APK for screenshots"; return 1; }
+  play_art "$slug" || true
+  release_notes "$slug" "$agent"
+  # Locked: everything an agent may take part in is done. The signing waits for the passphrase.
+  if [ -n "$NEED_SIGN" ]; then
+    jobset '.resume={vc:$c}' --argjson c "$PLAY_VC"
+    job locked "unlock to sign version $PLAY_VN"
+    return 0
+  fi
+  prepare_done "$slug"
+}
+
+prepare_done() {
+  local pd=$APPS/$1/play shots
+  pmeta "$1" '.prepared=$t' --argjson t "$(now)"
+  shots=$(ls "$pd"/shots/*.png 2>/dev/null | wc -l)
+  if [ "$shots" -ge 2 ]; then job done "ready for Play: version $PLAY_VN"
+  else job done "ready for Play: version $PLAY_VN (no screenshots: connect adb and prepare again, or add 2 in Play Console)"; fi
+}
+
+# The prepare job's second half, unlocked in a terminal: sign the bundle the first half got building.
+play_prepare_finish() {
+  local slug=$1 vc; vc=$(jq -r '.resume.vc // empty' "$JOB")
+  [ -n "$vc" ] || { job failed "nothing to sign: prepare it again"; return 1; }
+  PLAY_VC=$vc PLAY_VN="1.$((vc - 1))"
+  play_sign "$slug" || return 1
+  prepare_done "$slug"
+}
+
+# jobset <jq filter> [args...]: change job.json's fields without logging a phase.
+# ---- release notes: written for users by the agent, never the user's own requests ----
+
+# changes_since_upload <slug>: the change requests kept since the last upload, one per line (private:
+# they may say anything, so they only ever go to the agent).
+changes_since_upload() {
+  jq -r '(.play.uploaded // 0) as $u | if $u == 0 then empty else
+      [.history[]? | select(.t > $u and .discarded != true) | .prompt | split("\n")[0] | select(startswith("Change this Android app (read AGENTS.md first): "))
+       | ltrimstr("Change this Android app (read AGENTS.md first): ") | select(startswith("Continue:") | not)] | join("\n") end' \
+    "$APPS/$1/.hatchlybox.json" 2>/dev/null
+}
+
+notes_prompt() {
+  cat <<EOF
+Write the release notes ("What's new") of this app's next version on Google Play, in $2. Read the code
+if you need to. Don't change any other file and don't run Gradle.
+
+These are the developer's private notes on what changed since the last release. Don't quote them:
+describe what changed for the people using the app.
+$1
+
+Create play/release-notes.txt: plain text, at most 500 characters, 1-4 short lines starting with "• ".
+Only what users notice; no names, emails, people, internal remarks, emoji or promotions.
+EOF
+}
+
+# release_notes <slug> <agent>: play/release-notes.txt for the next upload, unless it's already newer than
+# the changes. Without an agent, or when it fails, the upload says "Bug fixes and improvements." instead.
+release_notes() {
+  local slug=$1 agent=$2 dir=$APPS/$1 changes last f=$APPS/$1/play/release-notes.txt
+  changes=$(changes_since_upload "$slug")
+  [ -n "$changes" ] || return 0
+  last=$(jq -r '[.history[]? | select(.discarded != true) | .t] | max // 0' "$dir/.hatchlybox.json")
+  [ -s "$f" ] && [ "$(jq -r '.play.notesAt // 0' "$dir/.hatchlybox.json")" -ge "$last" ] && return 0
+  [ -n "$agent" ] && command -v "$agent" >/dev/null 2>&1 || return 0
+  job agent "$agent is writing the release notes"
+  rm -f "$f"
+  run_agent "$agent" "$dir" "$(notes_prompt "$changes" "$(jq -r '.play.lang // "en-US"' "$dir/.hatchlybox.json")")"
+  if agent_needs_login $?; then echo "$agent isn't logged in: no release notes written" >> "$LOG"; return 0; fi
+  [ -s "$f" ] || { echo "$agent didn't write play/release-notes.txt" >> "$LOG"; return 0; }
+  local tmp; tmp=$(mktemp "$CACHE/.notes.XXXX"); head -c 500 "$f" > "$tmp" && mv "$tmp" "$f"
+  pmeta "$slug" '.notesAt=$t | .notes=$n' --argjson t "$(now)" --rawfile n "$f"
+}
+
+# The notes for the next upload: the agent's on the changes since the last one, else the last upload's, else
+# the listing's (a first release).
+notes_text() {
+  local dir=$APPS/$1
+  if [ -n "$(changes_since_upload "$1")" ]; then
+    [ -s "$dir/play/release-notes.txt" ] && [ "$(jq -r '.play.notesAt // 0' "$dir/.hatchlybox.json")" -ge "$(jq -r '[.history[]? | select(.discarded != true) | .t] | max // 0' "$dir/.hatchlybox.json")" ] \
+      && head -c 500 "$dir/play/release-notes.txt"
+  else
+    # Nothing new since the last upload (another track, say): the same notes again.
+    jq -r '.play.notes // empty' "$dir/.hatchlybox.json" | grep . || jq -r '.releaseNotes // empty' "$dir/play/listing.json" 2>/dev/null
+  fi
+}
+
+# ---- upload ----
+
+# The Play track name for the front end's word.
+track_id() { case $1 in internal) echo internal ;; closed) echo alpha ;; production) echo production ;; *) return 1 ;; esac; }
+
+# The edit: open it, or say why not. Sets EDIT.
+open_edit() {
+  local pkg=$1
+  gp POST "$API/$pkg/edits" -H 'Content-Type: application/json' --data-binary '{}' || return 1
+  EDIT=$(jq -r .id <<< "$GP_BODY")
+}
+
+commit_edit() {
+  local pkg=$1
+  gp POST "$API/$pkg/edits/$EDIT:commit" && return 0
+  # Some changes (a new app's first ones, for instance) must be sent for review in Play Console.
+  if gp_err | grep -q changesNotSentForReview; then
+    gp POST "$API/$pkg/edits/$EDIT:commit?changesNotSentForReview=true" && { SEND_REVIEW=1; return 0; }
+  fi
+  return 1
+}
+
+# images <pkg> <lang> <type> <files...>: replace that kind of store image.
+images() {
+  local pkg=$1 lang=$2 type=$3 f; shift 3
+  [ $# -gt 0 ] || return 0
+  gp DELETE "$API/$pkg/edits/$EDIT/listings/$lang/$type" || true
+  for f in "$@"; do
+    gp POST "$UPAPI/$pkg/edits/$EDIT/listings/$lang/$type?uploadType=media" -H 'Content-Type: image/png' --data-binary "@$f" || return 1
+  done
+}
+
+# play_apply_testers <slug>: the closed test's Google Groups (the app's own and, once it asked, the
+# community's), in the open edit.
+play_apply_testers() {
+  local slug=$1 pkg groups
+  pkg=$(jq -r .pkg "$APPS/$slug/.hatchlybox.json")
+  groups=$(jq -c --arg c "$(jq -r '.group // empty' "$COMMUNITY" 2>/dev/null)" \
+    '[.play.group // empty, (if .play.community == true and $c != "" then $c else empty end)] | unique' "$APPS/$slug/.hatchlybox.json")
+  [ "$groups" != "[]" ] || return 0
+  gp_json PUT "$API/$pkg/edits/$EDIT/testers/alpha" "{\"googleGroups\":$groups}"
+}
+
+# testers_now <slug>: set the groups on Play right away, when the app is there already.
+testers_now() {
+  local slug=$1 pkg
+  sa_known && [ "$(jq -r '.play.linked // false' "$APPS/$slug/.hatchlybox.json")" = true ] || return 2
+  # Locked and no terminal to unlock it in: it's set with the next closed-testing upload instead.
+  if locked_mode && [ -z "$U" ]; then { [ -t 0 ] && ask_pass && open_secrets; } || return 2; fi
+  pkg=$(jq -r .pkg "$APPS/$slug/.hatchlybox.json")
+  LOG=$CACHE/play-check.log; : > "$LOG"
+  TOKEN=$(play_token) && open_edit "$pkg" && play_apply_testers "$slug" && commit_edit "$pkg"
+}
+
+# ---- the community tester exchange: a shared Google Group and a list of apps, on GitHub ----
+
+COMMUNITY_REPO=$(setting communityRepo)
+COMMUNITY=$CACHE/community.json
+TESTING=$CACHE/testing.json
+
+play_community() {
+  [[ $COMMUNITY_REPO =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo 'Set a tester directory first: hatchlybox set communityRepo owner/repository' >&2; return 1; }
+  local raw=https://raw.githubusercontent.com/$COMMUNITY_REPO/main c a tmp
+  c=$(curl -sfL --max-time 20 "$raw/community.json") && a=$(curl -sfL --max-time 20 "$raw/apps.json") \
+    && jq -e 'type == "array"' <<< "$a" >/dev/null || { echo "couldn't reach the tester list" >&2; return 1; }
+  tmp=$(mktemp "$CACHE/.community.XXXX")
+  # Anyone can list an app there: keep only well-formed entries, once each, with their text cut short.
+  jq -c --argjson a "$a" --argjson t "$(now)" '. + {fetched:$t, repo:"'"$COMMUNITY_REPO"'",
+      apps:([$a[] | objects | select((.pkg | type) == "string" and (.pkg | test("^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$")) and (.pkg | length) <= 150)
+        | {pkg, name: ((.name // .pkg) | tostring | .[0:50]), description: ((.description // "") | tostring | .[0:300]), until: ((.until // "") | tostring | .[0:10])}]
+        | unique_by(.pkg))}' <<< "$c" > "$tmp" && mv "$tmp" "$COMMUNITY"
+}
+
+# The upload job: bundle, listing, graphics, release on the track, testers, commit.
+play_upload() {
+  local slug=$1 word=$2 dir=$APPS/$1 agent
+  track_id "$word" >/dev/null || { job failed "unknown track $word"; return 1; }
+  [ -f "$CACHE/apks/$slug.aab" ] || { job failed "prepare it for Play first"; return 1; }
+  release_preflight "$slug" || { job failed 'release review is missing or stale'; return 1; }
+  if locked_mode && [ -z "$U" ]; then
+    job locked "unlock to upload to $([ "$word" = production ] && echo production || echo "$word testing")"
+    return 0
+  fi
+  play_upload_go "$slug" "$word"
+}
+
+# The upload itself: needs the Play key (unlocked, or a plain one from before locking).
+play_upload_go() {
+  local slug=$1 word=$2 dir=$APPS/$1 pd=$APPS/$1/play track pkg aab lang notes status m
+  UPLOAD_WORD=$word
+  track=$(track_id "$word") || { job failed "unknown track $word"; return 1; }
+  pkg=$(jq -r .pkg "$dir/.hatchlybox.json")
+  aab=$CACHE/apks/$slug.aab
+  job checking "connecting to Google Play"
+  TOKEN=$(play_token 2>>"$LOG") || { job failed "$(tail -1 "$LOG")"; return 1; }
+  if ! open_edit "$pkg"; then
+    [ "$GP_CODE" = 404 ] && pmeta "$slug" '.linked=false'
+    job failed "$(gp_explain)"; return 1
+  fi
+  pmeta "$slug" '.linked=true'
+
+  # Play refuses a version code it has seen: build a newer one if needed.
+  local remote vc
+  gp GET "$API/$pkg/edits/$EDIT/tracks" || { job failed "$(gp_explain)"; return 1; }
+  remote=$(jq '[.tracks[]?.releases[]?.versionCodes[]? | tonumber] | max // 0' <<< "$GP_BODY")
+  gp GET "$API/$pkg/edits/$EDIT/bundles" || { job failed "$(gp_explain)"; return 1; }
+  local bundles_max; bundles_max=$(jq '[.bundles[]?.versionCode | tonumber] | max // 0' <<< "$GP_BODY")
+  [ "$bundles_max" -le "$remote" ] || remote=$bundles_max
+  vc=$(jq -r '.play.vc // 0' "$dir/.hatchlybox.json")
+  pmeta "$slug" '.remote=$r' --argjson r "$remote"
+  # The app changed after its .aab was built (an agent ran since): bundle the new code.
+  local stale; stale=$(jq -r --arg source "$(source_id "$slug")" '.artifacts.aab.source != $source' "$dir/.hatchlybox.json")
+  if [ "$vc" -le "$remote" ] || [ "$stale" = true ]; then
+    gp DELETE "$API/$pkg/edits/$EDIT" || true
+    job failed 'bundle is stale or its version is already on Play: prepare and review a new release'
+    return 1
+  fi
+
+  release_preflight "$slug" || { job failed "release changed or incomplete: review and approve again"; return 1; }
+  job uploading "uploading version $(jq -r '.play.vn' "$dir/.hatchlybox.json") ($(du -h "$aab" | cut -f1))"
+  gp POST "$UPAPI/$pkg/edits/$EDIT/bundles?uploadType=media" -H 'Content-Type: application/octet-stream' --data-binary "@$aab" \
+    || { job failed "$(gp_explain)"; return 1; }
+
+  [ "$(jq -r '.versionCode // 0' <<< "$GP_BODY")" = "$vc" ] || { job failed "Play returned an unexpected bundle version"; return 1; }
+  local uploaded_hash; uploaded_hash=$(jq -r '.sha256 // empty' <<< "$GP_BODY")
+  [ "$uploaded_hash" = "$(sha256sum "$aab" | cut -d' ' -f1)" ] || { job failed "Play returned an unexpected bundle checksum"; return 1; }
+
+  # The listing goes up in the language it was written in. Play's default language may differ: then the
+  # listing is added as a translation, and the default one stays as it is in Play Console.
+  local playLang="" langNote=""
+  lang=$(jq -r '.play.lang // "en-US"' "$dir/.hatchlybox.json")
+  gp GET "$API/$pkg/edits/$EDIT/details" && playLang=$(jq -r '.defaultLanguage // empty' <<< "$GP_BODY")
+  if [ -n "$playLang" ] && [ "$playLang" != "$lang" ]; then
+    langNote=" (listing added in $lang; Play's default language is $playLang: fill that one in Play Console)"
+    echo "   Play's default language is $playLang: the $lang listing is added beside it" >> "$LOG"
+  fi
+  local contact; contact=$(jq -r '.contact // empty' "$PSTATE" 2>/dev/null)
+  if [ -n "$contact" ] && [ "$(jq -r '.contactEmail // empty' <<< "$GP_BODY")" != "$contact" ]; then
+    gp_json PATCH "$API/$pkg/edits/$EDIT/details" "$(jq -nc --arg e "$contact" '{contactEmail:$e}')" || echo "   couldn't set the contact email" >> "$LOG"
+  fi
+  if [ -f "$pd/listing.json" ]; then
+    job uploading "store listing and graphics ($lang)"
+    gp_json PUT "$API/$pkg/edits/$EDIT/listings/$lang" \
+      "$(jq -c --arg l "$lang" '{language:$l, title, shortDescription, fullDescription}' "$pd/listing.json")" \
+      || { job failed "$(gp_explain)"; return 1; }
+    [ -f "$pd/icon.png" ] && { images "$pkg" "$lang" icon "$pd/icon.png" || { job failed "$(gp_explain)"; return 1; }; }
+    [ -f "$pd/feature.png" ] && { images "$pkg" "$lang" featureGraphic "$pd/feature.png" || { job failed "$(gp_explain)"; return 1; }; }
+    local shots=("$pd"/shots/*.png)
+    [ -f "${shots[0]}" ] && { images "$pkg" "$lang" phoneScreenshots "${shots[@]}" || { job failed "$(gp_explain)"; return 1; }; }
+  fi
+
+  # The first release gets the listing's notes; later ones, the agent's notes on what changed (written
+  # before the upload started, so the play tab could show them). Never the requests themselves.
+  notes=$(notes_text "$slug")
+  release() {
+    jq -nc --arg t "$track" --arg n "$(jq -r .play.vn "$dir/.hatchlybox.json")" --arg c "$vc" --arg s "$1" --arg l "$lang" --arg r "${notes:-Bug fixes and improvements.}" \
+      '{track:$t, releases:[{name:$n, versionCodes:[$c], status:$s, releaseNotes:[{language:$l, text:$r}]}]}'
+  }
+  job uploading "release on $([ "$word" = production ] && echo production || echo "$word testing")"
+  status=completed
+  if ! gp_json PUT "$API/$pkg/edits/$EDIT/tracks/$track" "$(release completed)"; then
+    # A new app stays a draft until its first release is rolled out in Play Console.
+    if gp_err | grep -qi draft; then
+      status=draft
+      gp_json PUT "$API/$pkg/edits/$EDIT/tracks/$track" "$(release draft)" || { job failed "$(gp_explain)"; return 1; }
+    else
+      job failed "$(gp_explain)"; return 1
+    fi
+  fi
+  if [ "$track" = alpha ]; then
+    play_apply_testers "$slug" || echo "   couldn't set the testers' group: $(gp_err)" >> "$LOG"
+  fi
+  SEND_REVIEW=
+  commit_edit "$pkg" || { job failed "$(gp_explain)"; return 1; }
+
+  pmeta "$slug" '.uploaded=$t | .tracks[$w]={vc:$c, vn:.vn, at:$t, status:$s, review:$r} | .remote=([.remote // 0, $c] | max) | .notes=$n
+      | if $w == "closed" and $s == "completed" and .closedSince == null then .closedSince=$t else . end' \
+    --arg w "$word" --argjson c "$vc" --argjson t "$(now)" --arg s "$status" --argjson r "$([ -n "$SEND_REVIEW" ] && echo true || echo false)" --arg n "${notes:-Bug fixes and improvements.}"
+  m="version $(jq -r .play.vn "$dir/.hatchlybox.json") is on ${word}"
+  [ "$word" = production ] || m="$m testing"
+  if [ "$status" = draft ]; then m="$m as a draft: roll it out in Play Console (the app's first release has to be)"
+  elif [ -n "$SEND_REVIEW" ]; then m="$m: send the changes for review in Play Console › Publishing overview"; fi
+  job done "$m$langNote"
+}
+
+play_cmd() {
+  umask 077
+  local sub=${1:-}; shift || true
+  case $sub in
+    policy)
+      need_app "${1:-}"
+      if [ -n "${2:-}" ]; then
+        [[ $2 =~ ^https://[^[:space:]]+$ ]] || { echo 'use a public HTTPS privacy-policy URL' >&2; return 1; }
+        curl -fsSL --max-time 20 "$2" -o /dev/null || return 1
+        pmeta "$1" '.privacyUrl=$u' --arg u "$2"; echo 'privacy-policy URL saved'
+      else cat "$APPS/$1/play/privacy-policy.md"; fi ;;
+    review) need_app "${1:-}"; review_release "$1" ;;
+    preview) need_app "${1:-}"; release_preview "$1" ;;
+    approve)
+      need_app "${1:-}"; local fingerprint; fingerprint=$(release_review_id "$1") || return 1
+      [ "${2:-}" = "$fingerprint" ] || { echo 'release changed: preview it again' >&2; return 1; }
+      pmeta "$1" '.reviewed=$h' --arg h "$fingerprint"; echo 'release approved' ;;
+    connect) play_connect ;;
+    key) [ -f "${1:-}" ] || { echo "usage: hatchlybox play key <service-account.json>" >&2; exit 1; }
+      if locked_mode; then ask_pass || exit 1; fi; play_key "$1" ;;
+    status) play_status ;;
+    disconnect) rm -f "$PLAY/service-account.json" "$VAULT/service-account.json.enc" "$CACHE/play-token.json"; pstate '.state="none" | del(.email, .project) | .msg=""'; echo "disconnected" ;;
+    prepare)
+      local slug=${1:-} agent=${2:-} relist=${3:-}
+      need_app "$slug"
+      pending "$slug" && { echo "accept or discard the change waiting on $slug first: Play gets the main version" >&2; exit 1; }
+      [ -n "$agent" ] || agent=$(jq -r '.agent // empty' "$APPS/$slug/.hatchlybox.json")
+      command -v "$agent" >/dev/null 2>&1 || agent=$(first_agent)
+      # The agent is needed for the listing; without one, a listing must already be there.
+      if [ -z "$agent" ] && ! listing_ok "$slug"; then echo "no coding agent is installed to write the listing" >&2; exit 1; fi
+      start play-prepare "$slug" "$agent" "$relist" ;;
+    upload)
+      local slug=${1:-} word=${2:-}
+      need_app "$slug"
+      pending "$slug" && { echo "accept or discard the change waiting on $slug first: Play gets the main version" >&2; exit 1; }
+      track_id "$word" >/dev/null || { echo "track must be internal, closed or production" >&2; exit 1; }
+      sa_known || { echo "connect Google Play first (play tab)" >&2; exit 1; }
+      [ -f "$CACHE/apks/$slug.aab" ] || { echo "prepare it for Play first" >&2; exit 1; }
+      start play-upload "$slug" "" "$word" ;;
+    check)
+      # Is the app on Play yet (its first .aab uploaded by hand)? Opens an edit and drops it.
+      local slug=${1:-}; need_app "$slug"
+      local pkg; pkg=$(jq -r .pkg "$APPS/$slug/.hatchlybox.json")
+      LOG=$CACHE/play-check.log; : > "$LOG"
+      if locked_mode; then ask_pass && open_secrets || exit 1; fi
+      TOKEN=$(play_token) || exit 1
+      if open_edit "$pkg"; then
+        gp DELETE "$API/$pkg/edits/$EDIT" || true
+        pmeta "$slug" '.linked=true'
+        echo "found $pkg on Google Play: uploads from here work now"
+      else
+        [ "$GP_CODE" = 404 ] && pmeta "$slug" '.linked=false'
+        gp_explain >&2; exit 1
+      fi ;;
+    aab)
+      need_app "${1:-}"; [ -f "$CACHE/apks/$1.aab" ] || { echo "prepare it for Play first" >&2; exit 1; }
+      artifact_ok "$1" aab "$CACHE/apks/$1.aab" || { echo "prepare again: bundle is stale" >&2; return 1; }
+      serve; serve_url "$1.aab" ;;
+    backup)
+      # The key and its password, encrypted with a passphrase (asked in the terminal without showing it, or
+      # read from stdin: never an argument, which other programs could read), offered to the browser for two
+      # minutes. It counts as backed up only once the browser has fetched it.
+      local slug=${1:-}; need_app "$slug"
+      key_known "$slug" || { echo "$slug has no upload key yet: prepare it for Play first" >&2; exit 1; }
+      if locked_mode; then echo "First unlock your keys."; ask_pass && open_secrets "$slug" || exit 1; fi
+      local pass pass2
+      if [ -t 0 ]; then
+        echo "Back up the upload key of $slug. Pick a passphrase of 8 or more characters (nothing shows as you type)."
+        echo "Keep it apart from the backup file: without it the backup can't be opened."
+        IFS= read -rsp "passphrase: " pass; echo; IFS= read -rsp "again: " pass2; echo
+        [ "$pass" = "$pass2" ] || { echo "the two didn't match: run it again" >&2; exit 1; }
+      else IFS= read -r pass || true; fi
+      [ ${#pass} -ge 8 ] || { echo "pick a passphrase of at least 8 characters for the backup" >&2; exit 1; }
+      local name; name=$slug-$(head -c 12 /dev/urandom | b64url | tr -dc 'A-Za-z0-9')-upload-key.txt
+      local b=$CACHE/apks/$name
+      { echo "Hatchlybox upload key for $slug ($(jq -r .pkg "$APPS/$slug/.hatchlybox.json")), encrypted with your passphrase."
+        echo "Google Play needs this key for every update. Lost it? Play Console › Setup › App signing › Request upload key reset."
+        echo "To restore it on a phone with Hatchlybox: hatchlybox play restore $slug <this file> (it asks for the passphrase)."
+        echo "By hand: keep the lines between BEGIN and END in key.b64, then"
+        echo "  openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -a -in key.b64 | tar -x"
+        echo "gives $slug.p12 (alias: upload) and $slug.pass (its password)."
+        echo "BEGIN"
+        tar -C "$KEYS" -c "$slug.p12" "$slug.pass" | BK_PASS=$pass openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -a -pass env:BK_PASS \
+          || { rm -f "$b"; echo "couldn't encrypt the backup" >&2; exit 1; }
+        echo "END"; } > "$b"
+      serve
+      rm -f "$CACHE/apks/.fetched/$name"
+      # Watch for the download for two minutes, then remove the file either way.
+      setsid -f bash -c 'for _ in $(seq 60); do [ -e "$1/.fetched/$2" ] && { "$0" play set "$3" backedup; break; }; sleep 2; done
+        rm -f "$1/$2" "$1/.fetched/$2"' "$0" "$CACHE/apks" "$name" "$slug" >/dev/null 2>&1 < /dev/null 5>&- 6>&- 7>&- 8>&- 9>&-
+      if [ -t 1 ]; then
+        xdg-open "$(serve_url "$name")" >/dev/null 2>&1 \
+          && echo "The browser is downloading the encrypted backup: keep the file somewhere safe (it's removed from here in 2 minutes)." \
+          || echo "Open this in the browser within 2 minutes: $(serve_url "$name")"
+      else serve_url "$name"; fi ;;
+    restore)
+      # restore <slug> <backup file>: the key from an encrypted backup, the passphrase on stdin.
+      local slug=${1:-} f=${2:-}; need_app "$slug"
+      [ -f "$f" ] || { echo "usage: hatchlybox play restore <slug> <backup file>" >&2; exit 1; }
+      key_known "$slug" && { echo "$slug already has an upload key" >&2; exit 1; }
+      local pass t
+      if [ -t 0 ]; then IFS= read -rsp "passphrase of the backup: " pass; echo; else IFS= read -r pass || true; fi
+      t=$(mktemp -d "$CACHE/.restore.XXXX")
+      sed -n '/^BEGIN$/,/^END$/p' "$f" | sed '1d;$d' | BK_PASS=$pass openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -a -pass env:BK_PASS 2>/dev/null \
+        | tar -C "$t" -x "$slug.p12" "$slug.pass" 2>/dev/null \
+        || { rm -rf "$t"; echo "couldn't open the backup: wrong passphrase, or it's another app's" >&2; exit 1; }
+      if locked_mode; then
+        echo "Now unlock your keys, to lock this one with them."
+        { ask_pass && vault_put "$t/$slug.p12" "keys/$slug.p12" && vault_put "$t/$slug.pass" "keys/$slug.pass"; } || { rm -rf "$t"; echo "couldn't lock the restored key" >&2; exit 1; }
+        rm -rf "$t"
+      else
+        mkdir -p "$KEYS" && mv "$t/$slug.p12" "$t/$slug.pass" "$KEYS/" && rmdir "$t"
+        chmod 600 "$KEYS/$slug.p12" "$KEYS/$slug.pass"
+      fi
+      echo "restored the upload key of $slug" ;;
+    testers)
+      local slug=${1:-} group=${2:-}; need_app "$slug"
+      [[ $group =~ ^[^@[:space:]]+@[^@[:space:]]+\.[a-z]{2,}$ ]] || { echo "that isn't a group email (like my-testers@googlegroups.com)" >&2; exit 1; }
+      pmeta "$slug" '.group=$g' --arg g "$group"
+      # Already on Play: set it right away, without waiting for the next upload.
+      testers_now "$slug"
+      case $? in
+        0) echo "testers set: $group can test closed releases" ;;
+        2) echo "saved: it's set with the next closed-testing upload" ;;
+        *) echo "saved; Play said: $(gp_explain)" >&2; exit 1 ;;
+      esac ;;
+    community) play_community && jq -r '"\(.apps | length) apps want testers"' "$COMMUNITY" ;;
+    ask)
+      # Add the community group to the app's closed test, then the filled-in issue that lists it.
+      local slug=${1:-}; need_app "$slug"
+      play_community >/dev/null || return 1
+      [ -n "$(jq -r '.group // empty' "$COMMUNITY" 2>/dev/null)" ] || { echo "the community group isn't set up yet: try again later" >&2; exit 1; }
+      pmeta "$slug" '.community=true'
+      testers_now "$slug"
+      [ $? -eq 1 ] && { echo "couldn't add the community group on Play: $(gp_explain)" >&2; exit 1; }
+      jq -r --arg r "$COMMUNITY_REPO" '"https://github.com/\($r)/issues/new?template=add-app.yml&title=" + ("[app] " + (.play.title // .label // .slug) | @uri)
+          + "&package=" + (.pkg | @uri) + "&name=" + ((.play.title // .label // .slug) | @uri)
+          + "&description=" + (((if $d == "" then (.history[0].prompt // "" | sub("^Build this Android app in the current directory: "; "") | split("\n")[0]) else $d end) | .[0:200]) | @uri)' --arg d "$(jq -r '.shortDescription // empty' "$APPS/$slug/play/listing.json" 2>/dev/null)" \
+        "$APPS/$slug/.hatchlybox.json" ;;
+    testing)
+      # The community apps this phone tests, with the day each test began.
+      local pkg=${1:-} on=${2:-}
+      [[ $pkg =~ ^[a-zA-Z][a-zA-Z0-9_.]*$ && $on =~ ^(on|off)$ ]] || { echo "usage: hatchlybox play testing <package> on|off" >&2; exit 1; }
+      json_edit "$TESTING" --arg p "$pkg" --arg on "$on" --argjson t "$(now)" 'if $on=="on" then .[$p]=(.[$p] // $t) else del(.[$p]) end' ;;
+    set)
+      case ${1:-} in
+        personal) [[ ${2:-} =~ ^(yes|no)$ ]] || exit 1; pstate '.personal=($v == "yes")' --arg v "$2" ;;
+        contact) [[ ${2:-} =~ ^[^@[:space:]]+@[^@[:space:]]+$ ]] || { echo "that isn't an email" >&2; exit 1; }; pstate '.contact=$v' --arg v "$2" ;;
+        *)
+          local slug=${1:-}; need_app "$slug"
+          case ${2:-} in
+            testers) [[ ${3:-} =~ ^[0-9]+$ ]] || exit 1; pmeta "$slug" '.testers=$n' --argjson n "$3" ;;
+            production) [[ ${3:-} =~ ^(yes|no)$ ]] || exit 1; pmeta "$slug" '.production=($v == "yes")' --arg v "$3" ;;
+            # Set by the backup's watcher once the browser has fetched the encrypted key (backupV 2: encrypted).
+            backedup) pmeta "$slug" '.backedUp=$t | .backupV=2' --argjson t "$(now)" ;;
+            # After "edit what's new": notes written by hand count as up to date with the changes.
+            notes)
+              local f=$APPS/$slug/play/release-notes.txt
+              if [ "$(jq -r '.play.uploaded // empty' "$APPS/$slug/.hatchlybox.json")" ] && [ -s "$f" ]; then
+                local tmp; tmp=$(mktemp "$CACHE/.notes.XXXX"); head -c 500 "$f" > "$tmp" && mv "$tmp" "$f"
+                pmeta "$slug" '.notesAt=$t | .notes=$n' --argjson t "$(now)" --rawfile n "$f"
+              else
+                listing_ok "$slug" || { echo "play/listing.json isn't valid JSON any more: fix it" >&2; exit 1; }
+                pmeta "$slug" '.notes=$n' --arg n "$(jq -r '.releaseNotes // empty' "$APPS/$slug/play/listing.json")"
+              fi ;;
+            *) echo "usage: hatchlybox play set <slug> testers <n> | production <yes|no>" >&2; exit 1 ;;
+          esac ;;
+      esac ;;
+    *) sed -n '/^# Google Play (see/,/^#$/p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  esac
+}
+
+# ---- setup: everything a build needs, fetched once, each step skipped when already done ----
+
+# Pinned downloads: a changed file fails its checksum instead of running (the Android ones: android.sh).
+WRAPPER_URL=https://raw.githubusercontent.com/gradle/gradle/v8.11.1
+JAR_SHA=2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046
+GRADLEW_SHA=9cbbb4d68ff7fb5211c4d58f598ac9d8664c05fdcd1e5f59b7f2c3ac1ee00af0
+STEPS=5
+
+# step <n> <msg>: report progress in setup.json for the front end.
+step() {
+  jq -nc --argjson n "$1" --argjson s $STEPS --arg m "$2" --argjson t "$(now)" --argjson pid $$ --arg process "$(process_id $$)" --argjson v $VERSION \
+    '{state:"running", step:$n, steps:$s, msg:$m, updated:$t, pid:$pid, process:$process, version:$v}' > "$SETUP.tmp" && mv "$SETUP.tmp" "$SETUP"
+  echo "== [$1/$STEPS] $2" >> "$SLOG"
+}
+
+# finish <done|failed> <msg>
+finish() {
+  jq -c --arg st "$1" --arg m "$2" --argjson t "$(now)" '.state=$st | .msg=$m | .updated=$t | if $st == "done" then .step=.steps else . end' "$SETUP" > "$SETUP.tmp" \
+    && mv "$SETUP.tmp" "$SETUP"
+  echo "== $1: $2" >> "$SLOG"
+}
+
+# A failure says what happened where it was asked for too (the front end's toast, a terminal), not only in setup.json.
+die() { finish failed "$1"; printf "Android building isn't set up: %s\nWhat went wrong is at the end of %s; hatchlybox setup tries again.\n" "$1" "$SLOG" >&2; exit 1; }
+
+# setup_running: a setup is at work now (its process still runs; one killed midway left "running" behind).
+setup_running() {
+  local p id
+  [ "$(jq -r '.state // empty' "$SETUP" 2>/dev/null)" = running ] || return 1
+  p=$(jq -r '.pid // 0' "$SETUP" 2>/dev/null); id=$(jq -r '.process // empty' "$SETUP" 2>/dev/null)
+  [ -n "$id" ] && [ "$(process_id "${p:-0}")" = "$id" ] && ! orphaned "$p"
+}
+setup_where() { jq -r '"step \(.step) of \(.steps): \(.msg)"' "$SETUP" 2>/dev/null; }
+
+# setup_state: setup.json for front ends: its state (running, done, failed, or stopped: killed midway; none: never
+# run), step and message, and the setup log's last lines (what went wrong, in the tools' own words).
+setup_state() {
+  local st=none
+  [ -f "$SETUP" ] && st=$(jq -r '.state // "none"' "$SETUP" 2>/dev/null)
+  [ "$st" != running ] || setup_running || st=stopped
+  { cat "$SETUP" 2>/dev/null || echo '{}'; } | jq -c --arg st "$st" --arg log "$(grep -v '^== ' "$SLOG" 2>/dev/null | tail -n 12)" \
+--argjson ready "$(android_ready && echo true || echo false)" \
+    '. + {state: $st, ready: $ready, log: ($log | split("\n") | map(select(. != "")))}'
+}
+
+sha_ok() { [ -f "$2" ] && echo "$1  $2" | sha256sum -c --quiet >/dev/null 2>&1; }
+
+# fetch <url> <sha256> <dest>
+fetch() {
+  sha_ok "$2" "$3" && return 0
+  mkdir -p "$(dirname "$3")"
+  curl -fsSL --retry 3 -o "$3.part" "$1" >> "$SLOG" 2>&1 || { rm -f "$3.part"; return 1; }
+  sha_ok "$2" "$3.part" || { echo "checksum mismatch: $1" >> "$SLOG"; rm -f "$3.part"; return 1; }
+  mv "$3.part" "$3"
+}
+
+aapt2_ok() { "$1/build-tools/$BUILD_TOOLS/aapt2" version >/dev/null 2>&1; }
+sdk_ok() { [ -n "$1" ] && [ -f "$1/platforms/$PLATFORM/android.jar" ] && aapt2_ok "$1"; }
+
+# Licences the person accepted ($DATA/accepted.json: what -> when). Hatchlybox never accepts one for them: the front
+# ends show it and ask first, then record it with hatchlybox license accept.
+ACCEPTED=$DATA/accepted.json
+SDK_LICENSE_URL=https://developer.android.com/studio/terms
+accepted() { jq -e --arg w "$1" '.[$w] != null' "$ACCEPTED" >/dev/null 2>&1; }
+# license accept|check android-sdk: records that the person accepted Google's Android SDK License Agreement (check:
+# did they? exit 0 or 1).
+license_cmd() {
+  case ${1:-}:${2:-} in accept:android-sdk|check:android-sdk) ;; *) echo "usage: hatchlybox license accept|check android-sdk" >&2; return 2 ;; esac
+  [ "$1" != check ] || { accepted "$2"; return; }
+  local cur; cur=$(cat "$ACCEPTED" 2>/dev/null); jq -e 'type == "object"' <<< "$cur" >/dev/null 2>&1 || cur='{}'
+  mkdir -p "$DATA" && jq -c --arg w "$2" --argjson t "$(now)" '.[$w] = $t' <<< "$cur" > "$ACCEPTED.tmp" && mv "$ACCEPTED.tmp" "$ACCEPTED"
+  echo "accepted Google's Android SDK License Agreement ($SDK_LICENSE_URL)"
+}
+
+do_setup() {
+  # The installer starts one in the background: say so instead of "another job is running".
+  setup_running && { echo "Android building is already being set up ($(setup_where)): wait for it to finish" >&2; exit 1; }
+  mutation_lock
+  exec 9> "$CACHE/setup.lock"
+  flock -n 9 || { echo "Android building is already being set up: wait for it to finish" >&2; exit 1; }
+  : > "$SLOG"
+  if [ -f "$DATA/.built-$TOOLCHAIN" ]; then require_disk "$CACHE" 262144 || die "Free storage before updating the tools"
+  else require_disk "$CACHE" 2097152 || die "First setup needs at least 2 GiB free before downloading the SDK and build libraries"; fi
+  local dl=$CACHE/downloads sdk="" d
+  mkdir -p "$dl"
+  # The test build (step 5) runs once per toolchain: later runs have only 4 steps.
+  [ -f "$DATA/.built-$TOOLCHAIN" ] && STEPS=4
+
+  step 1 "checking the system"
+  for c in jq git curl unzip; do command -v "$c" >/dev/null 2>&1 || die "$c is missing: install it with the system's package manager"; done
+  java17 "$JAVA_HOME" || die "JDK 17 is missing: $(android_java_hint)"
+  [ "$(android_tools_kind)" != none ] || die "Android's build tools don't run on $(uname -s) $(uname -m)"
+  [ -d "$DATA/template/app" ] || die "the app template is missing: install Hatchlybox again"
+
+  step 2 "looking for an Android SDK"
+  # Reuse a working SDK (one set up by hand, or by an earlier run) instead of downloading 300 MB.
+  local search=()
+  if [ -n "${HATCHLYBOX_SDK_SEARCH+x}" ]; then read -ra search <<< "$HATCHLYBOX_SDK_SEARCH"; else mapfile -t search < <(android_sdk_dirs); fi
+  local dirs=("$(cat "$DATA/sdk.path" 2>/dev/null)" "${ANDROID_HOME_ORIG:-}" "$DATA/sdk" "${search[@]}")
+  for d in "${dirs[@]}"; do
+    sdk_ok "$d" && { sdk=$d; break; }
+  done
+  if [ -z "$sdk" ]; then
+    # Downloading Google's SDK means accepting its licence: only once the person did (hatchlybox license accept).
+    accepted android-sdk || die "Google's Android SDK License Agreement isn't accepted yet: read it at $SDK_LICENSE_URL, then accept it in Hatchlybox (or: hatchlybox license accept android-sdk)"
+    # One from an earlier version has everything but the newer platform: add that to it.
+    for d in "${dirs[@]}"; do
+      [ -n "$d" ] && aapt2_ok "$d" && { sdk=$d; break; }
+    done
+    sdk=${sdk:-$DATA/sdk}
+    local sm; sm=$(ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+    if [ -z "$sm" ]; then
+      sm=$sdk/cmdline-tools/latest/bin/sdkmanager
+      step 2 "downloading the Android command-line tools (about 150 MB)"
+      local clt; read -ra clt <<< "$(android_clt)"
+      [ ${#clt[@]} -eq 2 ] || die "Google makes no Android command-line tools for $(uname -s)"
+      fetch "${clt[0]}" "${clt[1]}" "$dl/cmdline-tools.zip" || die "couldn't download the Android command-line tools"
+      rm -rf "$sdk/cmdline-tools" && mkdir -p "$sdk/cmdline-tools"
+      unzip -q "$dl/cmdline-tools.zip" -d "$sdk/cmdline-tools" && mv "$sdk/cmdline-tools/cmdline-tools" "$sdk/cmdline-tools/latest" \
+        || die "couldn't unpack the Android command-line tools"
+      rm -f "$dl/cmdline-tools.zip"
+    fi
+    step 3 "installing the Android 16 SDK and build-tools (up to 150 MB)"
+    # sdkmanager's default heap can run a phone out of memory.
+    export SDKMANAGER_OPTS=-Xmx384m
+    yes 2>/dev/null | "$sm" --sdk_root="$sdk" --licenses >/dev/null 2>&1
+    echo "the SDK licenses, accepted by the person on $(date -d "@$(jq -r '."android-sdk"' "$ACCEPTED")" 2>/dev/null || echo "an earlier day")" >> "$SLOG"
+    # A half-written platform from an interrupted run blocks the install.
+    [ -f "$sdk/platforms/$PLATFORM/android.jar" ] || rm -rf "${sdk:?}/platforms/$PLATFORM"
+    # sdkmanager redraws a progress bar with \r: keep its messages, drop the bars.
+    local rc=0
+    "$sm" --sdk_root="$sdk" "platforms;$PLATFORM" "build-tools;$BUILD_TOOLS" > "$dl/sdkmanager.log" 2>&1 || rc=$?
+    tr '\r' '\n' < "$dl/sdkmanager.log" | grep -vE '^[[:space:]]*$|\] *[0-9]+%' >> "$SLOG"
+    rm -f "$dl/sdkmanager.log"
+    [ $rc -eq 0 ] && [ -f "$sdk/platforms/$PLATFORM/android.jar" ] || die "sdkmanager couldn't install the SDK: see the setup log"
+  fi
+
+  step 3 "checking the native build tools"
+  # Google's run on x86_64 Linux and on Macs; Linux on ARM gets the same tools built for aarch64.
+  if ! aapt2_ok "$sdk"; then
+    [ "$(android_tools_kind)" = arm64-build ] || die "the SDK's aapt2 doesn't run on $(uname -s) $(uname -m): see the setup log"
+    step 3 "downloading build-tools for aarch64 (14 MB)"
+    fetch "$ARM_URL" "$ARM_SHA" "$dl/arm-tools.zip" || die "couldn't download the aarch64 build-tools"
+    unzip -qo -j "$dl/arm-tools.zip" 'build-tools/*' -d "$sdk/build-tools/$BUILD_TOOLS" || die "couldn't unpack the aarch64 build-tools"
+    chmod +x "$sdk/build-tools/$BUILD_TOOLS"/{aapt,aapt2,aidl,dexdump,split-select,zipalign}
+    rm -f "$dl/arm-tools.zip"
+    aapt2_ok "$sdk" || die "aapt2 still doesn't run"
+  fi
+  echo "$sdk" > "$DATA/sdk.path"
+  export ANDROID_HOME=$sdk ANDROID_SDK_ROOT=$sdk
+  # adb, to install on phones: the system's, else Google's platform-tools where they run (Linux on ARM has none:
+  # its distribution's package, which doctor names).
+  if [ -z "$(adb_bin)" ] && [ "$(android_tools_kind)" = google ]; then
+    local psm; psm=$(ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+    if [ -n "$psm" ]; then
+      step 3 "installing adb (Android's platform-tools)"
+      SDKMANAGER_OPTS=-Xmx384m "$psm" --sdk_root="$sdk" platform-tools >> "$SLOG" 2>&1 || echo "couldn't install platform-tools: $(android_adb_hint)" >> "$SLOG"
+    fi
+  fi
+
+  step 4 "setting up the app template"
+  local t=$DATA/template
+  fetch "$WRAPPER_URL/gradle/wrapper/gradle-wrapper.jar" "$JAR_SHA" "$t/gradle/wrapper/gradle-wrapper.jar" \
+    && fetch "$WRAPPER_URL/gradlew" "$GRADLEW_SHA" "$t/gradlew" || die "couldn't download the Gradle wrapper"
+  chmod +x "$t/gradlew"
+  printf 'sdk.dir=%s\n' "$sdk" > "$t/local.properties"
+  # Tuned for the machine: a phone as before, a computer with more memory and parallel work (android.sh).
+  android_gradle_props "$sdk" > "$t/gradle.properties"
+
+  # The first build downloads Gradle and the libraries; doing it now makes the first app fast
+  # and proves the toolchain works before an agent spends time on code. It runs isolated, like every app's
+  # build: the caches it fills are the ones they use, and a sandbox that can't build fails here.
+  if [ ! -f "$DATA/.built-$TOOLCHAIN" ]; then
+    step 5 "test build: downloading Gradle and libraries (5-15 min)"
+    local w=$CACHE/warmup
+    rm -rf "$w"; project "$w" "$ID_PREFIX.warmup" warmup Warmup
+    ( cd "$w" && isolated build "$w" ./gradlew --console=plain -q assembleRelease ) >> "$SLOG" 2>&1 || die "the test build failed"
+    rm -rf "$w"
+    touch "$DATA/.built-$TOOLCHAIN"
+  fi
+  # Apps made before icons were drawn for the list (2.16.1) get theirs now.
+  starter_app || die "the Hello World test app didn't build"
+  missing_icons
+  finish done "ready to build"
+  # Godot (for game apps) installs after setup, in the background: building apps doesn't wait for it.
+  godot_ok || setsid -f "$0" godot >/dev/null 2>&1 < /dev/null 6>&- 7>&- 9>&-
+}
+
+# A decrypted folder whose owner was killed must not outlive it: the front end runs this every 30 seconds.
+source "$DATA/bin/workflow.sh"
+source "$DATA/bin/systems.sh"
+source "$DATA/bin/here.sh"
+source "$DATA/bin/route.sh"
+source "$DATA/bin/wrap.sh"
+source "$DATA/bin/gexport.sh"
+source "$DATA/bin/sync.sh"
+source "$DATA/bin/desktop.sh"
+source "$DATA/bin/starter.sh"
+source "$DATA/bin/agents.sh"
+export ADB_SERIAL=${ADB_SERIAL:-$(setting device)}
+if [ "${HATCHLYBOX_TEST:-}" = 1 ]; then return 0 2>/dev/null || exit 0; fi
+recover_vault
+sweep_unlocked
+cmd=${1:-}; shift || true
+if [ "${HATCHLYBOX_SANDBOX:-}" = 1 ] && [ "$cmd" != peek ]; then echo 'only peek is available inside a build agent' >&2; exit 1; fi
+case $cmd in
+  poll) if [ "${1:-}" = all ]; then poll_all; else poll_cached "${1:-}"; fi ;;
+  _poll) poll_worker "${1:-}" ;;
+  new)
+    mutation_lock; need_android
+    agent=${1:-}; shift || true; idea="$*"
+    [ -n "$idea" ] || { echo "usage: hatchlybox new <agent> <idea>" >&2; exit 1; }
+    can_start "$agent"
+    base=$(slugify "$idea"); base=${base:-app}; slug=$base; i=2
+    while [ -e "$APPS/$slug" ]; do slug="$base-$i"; i=$((i + 1)); done
+    scaffold "$slug" && list_apps
+    start app "$slug" "$agent" "$(new_prompt "$idea")" ;;
+  change)
+    mutation_lock
+    slug=${1:-} agent=${2:-}
+    [ $# -ge 3 ] || { echo "usage: hatchlybox change <slug> <agent> <request>" >&2; exit 1; }; shift 2
+    need_app "$slug"
+    # A game changes and exports without Android; an Android app needs Android building.
+    is_godot "$APPS/$slug" || need_android
+    # Made from its web version: the change goes there, and the app is wrapped again when it's done.
+    if wrapped "$slug"; then exec 6>&-; unset MUTATION_LOCKED; exec "$0" make "$slug" web "$agent" "$*"; fi
+    pending "$slug" && { echo "accept or discard the change waiting on $slug first" >&2; exit 1; }
+    can_start "$agent"
+    begin_change "$slug" "$*" || exit 1
+    start app "$slug" "$agent" "Change this Android app (read AGENTS.md first): $*
+Finish the requested edits and return; Hatchlybox runs the build after you exit." ;;
+  accept) mutation_lock; need_app "${1:-}"; job_running && [ "$(jq -r .slug "$JOB")" = "$1" ] && { echo "$1 is still building: wait for it" >&2; exit 1; }
+    git_lock; accept_change "$1" ;;
+  discard) mutation_lock; need_app "${1:-}"; job_running && [ "$(jq -r .slug "$JOB")" = "$1" ] && { echo "$1 is still building: stop it first" >&2; exit 1; }
+    git_lock; discard_change "$1" ;;
+  backup) mutation_lock; vault_lock; need_app "${1:-}"; mkdir -p "$BACKUPS"; project_backup "$1" "${2:-$BACKUPS/$1-$(now).enc}" ;;
+  verify) mutation_lock; need_app "${1:-}"; LOG=$CACHE/verify.log; do_install "$1" || exit $?; crash_check "$(jq -r .pkg "$APPS/$1/.hatchlybox.json")"; rc=$?; if [ "$rc" -eq 0 ]; then meta "$1" '.outcomes.runtime="startup-verified"'; echo "startup verified"; else meta "$1" '.outcomes.runtime="unavailable-or-crashed"'; fi; exit "$rc" ;;
+  checks) need_app "${1:-}"; checks_cmd "$@" ;;
+  restore) mutation_lock; vault_lock; [ $# -eq 2 ] || exit 1; project_restore "$1" "$2" ;;
+  github)
+    if [ "${1:-}" = sync ]; then
+      exec 6> "$CACHE/work.lock"; flock -n 6 || exit 0; MUTATION_LOCKED=1
+    else case ${1:-} in publish|visibility) mutation_lock ;; esac; fi
+    github_cmd "$@" ;;
+  _build) worker_run build_only "$1" ;;
+  _wrap) worker_run wrap_build "$1" ;;
+  _gexport) worker_run godot_export_work "$1" "$3" ;;
+  _app|_work) worker_run work "$@" ;;
+  _port) worker_run port_work "$@" ;;
+  _play-prepare) worker_run play_prepare "$@" ;;
+  _play-upload) worker_run play_upload "$1" "$3" ;;
+  build)
+    need_app "${1:-}"; need_android; start build "$1" "" "" ;;
+  install)
+    mutation_lock
+    need_app "${1:-}"; [ -s "$CACHE/apks/$1.apk" ] || need_android; LOG=$CACHE/install.log; do_install "$1"; rc=$?
+    # Not over adb: the browser gets it, which is a success for the front end, not an error.
+    [ $rc -eq 2 ] && { offer_url "$1.apk"; exit 0; }
+    [ $rc -eq 4 ] && echo "installed or launch check unavailable: verify on the phone" >&2
+    [ $rc -eq 3 ] && echo "can't install: the copy on the phone is signed differently (from Google Play?): uninstall it first" >&2
+    exit $rc ;;
+  serve) serve ;;
+  # The user installed the browser download: the phone can't tell us without adb.
+  installed)
+    mutation_lock; need_app "${1:-}"
+    meta "$1" '.status="installed" | .installed=$t | .outcomes.install="confirmed" | .installedArtifact=.artifacts.apk' --argjson t "$(now)"
+    echo "marked as installed" ;;
+  download)
+    need_app "${1:-}"; [ -f "$CACHE/apks/$1.apk" ] || { echo "$1 isn't built yet" >&2; exit 1; }
+    artifact_ok "$1" apk "$CACHE/apks/$1.apk" || { echo "rebuild this app first" >&2; exit 1; }
+    serve; meta "$1" '.downloaded=$t | .outcomes.install="download-offered"' --argjson t "$(now)"
+    offer_url "$1.apk" ;;
+  # A port (this phone's own wireless debugging) or host:port (a phone on the network, from a computer).
+  pair) adb pair "$(adb_addr "${1:-}")" "${2:-}" ;;
+  connect) adb connect "$(adb_addr "${1:-}")" && [ -n "$(adb_device)" ] && echo "$1" > "$CACHE/adb-port" ;;
+  qr) [ -n "${1:-}" ] || { echo "usage: hatchlybox qr <text>" >&2; exit 1; }; if [ -t 1 ]; then qr_show "$1"; else qr_rows "$1"; fi ;;
+  adb) adb_state ;;
+  cancel)
+    # A finished job keeps its result, and its old pid may belong to something else by now.
+    # A job waiting to be unlocked can be dropped too.
+    # A job waiting to carry on after being stopped (interrupted) can be dropped as well.
+    phase=$(jq -r '.phase // empty' "$JOB" 2>/dev/null)
+    job_active || [ "$phase" = locked ] || [ "$phase" = interrupted ] || { echo "no job is running" >&2; exit 1; }
+    slug=$(jq -r '.slug // empty' "$JOB" 2>/dev/null)
+    pid=$(jq -r .pid "$JOB" 2>/dev/null)
+    if worker_alive; then group=$(jq -r '.pgid // .pid' "$JOB"); kill -- -"$group" 2>/dev/null || true; fi
+    # Wait for the worker to release the mutation lock before changing state.
+    mutation_lock
+    attach_job
+    job cancelled "stopped"
+    # Don't leave the app stuck on "building": put it back to what it was.
+    if [ -n "$slug" ] && [ -d "$APPS/$slug" ]; then
+      meta "$slug" '.status=(if .apk then (if .installed then "installed" else "ready" end) else "cancelled" end)'
+    fi ;;
+  uninstall)
+    mutation_lock
+    slug=${1:-}; need_app "$slug"
+    pkg=$(jq -r .pkg "$APPS/$slug/.hatchlybox.json")
+    if adb_reconnect && adb uninstall "$pkg" >> "$LOG" 2>&1; then
+      meta "$slug" 'del(.installed) | .status=(if .apk then "ready" else "cancelled" end)'
+      echo "uninstalled $pkg"
+    else
+      echo "could not uninstall $pkg (is adb connected?)" >&2; exit 1
+    fi ;;
+  again)
+    # The last job once more: a Play job reruns (to the same track), an app job continues its app;
+    # with the AI helper picked now, if given (the job's own otherwise).
+    k=$(jq -r '.kind // "app"' "$JOB" 2>/dev/null) s=$(jq -r '.slug // empty' "$JOB" 2>/dev/null)
+    a=$(jq -r '.agent // empty' "$JOB" 2>/dev/null) x=$(jq -r '.arg // empty' "$JOB" 2>/dev/null)
+    case $k in
+      play-upload) exec "$0" play upload "$s" "$x" ;;
+      play-prepare) exec "$0" play prepare "$s" "${1:-$a}" ${x:+"$x"} ;;
+      *) exec "$0" retry "$s" ${1:+"$1"} ;;
+    esac ;;
+  retry)
+    slug=${1:-}; need_app "$slug"; is_godot "$APPS/$slug" || need_android
+    agent=${2:-$(jq -r '.agent // "claude"' "$APPS/$slug/.hatchlybox.json")}
+    command -v "$agent" >/dev/null 2>&1 || agent=$(first_agent)
+    [ -n "$agent" ] || { echo "no coding agent is installed" >&2; exit 1; }
+    # A change that didn't finish is retried as that change, on its own branch; anything else is finished.
+    if pending "$slug"; then
+      start app "$slug" "$agent" "Change this Android app (read AGENTS.md first): $(pget "$slug" request)
+Some of this change may be done already (an earlier try stopped): check the code, then finish it.
+Finish the requested edits and return; Hatchlybox runs the build after you exit."
+    else
+      start app "$slug" "$agent" "Continue building this Android app (read AGENTS.md first): finish it and make ./gradlew assembleRelease succeed."
+    fi ;;
+  delete)
+    mutation_lock
+    slug=${1:-}; need_app "$slug"
+    if job_running && [ "$(jq -r .slug "$JOB")" = "$slug" ]; then echo "$slug is still building: stop it first" >&2; exit 1; fi
+    # Its Play upload key stays in $KEYS: an app already on Play can't be updated without it.
+    # The GitHub repo, if any, stays: delete it on GitHub.
+    rm -rf "${APPS:?}/$slug" "$CACHE/apks/$slug.apk" "$CACHE/apks/$slug.aab" "$CACHE/apks/$slug.main.apk"
+    rm -f "$CACHE/icons/$slug"-*.png
+    # The last job was this app's: clear it, so the front end doesn't show an app that's gone.
+    if [ "$(jq -r '.slug // empty' "$JOB" 2>/dev/null)" = "$slug" ]; then rm -f "$JOB" "$LOG"; : > "$CACHE/build-err.txt"; fi
+    list_apps
+    echo "deleted $slug" ;;
+  list) list_apps; cat "$CACHE/apps.json" ;;
+  play) case ${1:-} in prepare|upload|restore|key|disconnect|connect|review|approve|policy) mutation_lock ;; esac
+    case ${1:-} in prepare|upload|aab) need_android ;; esac; play_cmd "$@" ;;
+  peek) peek_cmd "$@" ;;
+  skill) skill_cmd "$@" ;;
+  skills) skills_index; cat "$CACHE/skills.json" 2>/dev/null ;;
+  lock) mutation_lock; vault_lock; lock_cmd "$@" ;;
+  set) set_cmd "$@" ;;
+  icons) missing_icons; list_apps ;;
+  settings) cat "$SETTINGS" 2>/dev/null || echo "{}" ;;
+  keys-state) keys_state ;;
+  unlock) mutation_lock; vault_lock; attach_job; unlock_cmd ;;
+  setup) do_setup ;;
+  license) license_cmd "$@" ;;
+  setup-state) setup_state ;;
+  godot)
+    install_godot > >(tee -a "$CACHE/godot.log") 2>&1 && echo "Godot $GODOT_VER is ready: run it as godot (headless)" || exit 1
+    # The visual skill's renderer (Xvfb + software OpenGL, ~50 MB): renders a game without a screen, so AI helpers see
+    # screenshots of it. Optional. A phone installs it here; a computer's are system packages, which need an
+    # administrator (Hatchlybox never uses sudo): the command to run, in words.
+    if [ -x "$DATA/visual/bin/visual" ] && ! r=$("$DATA/visual/bin/visual" setup --check 2>/dev/null); then
+      if [ "$HOST" = hatchlybox ]; then
+        "$DATA/visual/bin/visual" setup > >(tee -a "$CACHE/godot.log") 2>&1 || echo "optional: game screenshots aren't set up yet: installing Godot again retries"
+      elif [[ $r == "sudo "* ]]; then
+        echo "optional: game screenshots (AI helpers look at a game while making it) need a few system packages. To add them, run this in a terminal: $r"
+      else echo "optional: game screenshots aren't set up yet: $r"; fi
+    fi
+    ;;
+  doctor)
+    # One line per missing piece; the front end shows them. Nothing printed = ready.
+    compat_missing | sed 's/^/missing /'
+    for c in jq git curl unzip openssl tar gzip; do command -v "$c" >/dev/null 2>&1 || echo "missing $c"; done
+    java17 "$JAVA_HOME" || echo "missing JDK 17: $(android_java_hint)"
+    # Android's pieces: always on the phone; on a computer only once Android building was asked for (it isn't needed
+    # for web apps, the computer's own apps or games).
+    if android_wanted; then
+      [ -n "$(adb_bin)" ] || echo "missing adb: $(android_adb_hint)"
+      # Setup is the one place the SDK and Gradle come from: while it runs (the installer starts it), one line for it;
+      # after it failed, why, even when the pieces it fetched are all there.
+      st=$(setup_state | jq -r .state)
+      if [ "$st" = running ]; then echo "missing Android building: being set up now ($(setup_where))"
+      else
+        sdk_ok "$ANDROID_HOME" || echo "missing Android SDK"
+        [ -x "$DATA/template/gradlew" ] || echo "missing Gradle wrapper"
+        [ "$st" != failed ] || echo "missing Android building: the last setup didn't finish ($(jq -r .msg "$SETUP")): Settings › Set up Android building tries again"
+        [ "$st" != stopped ] || echo "missing Android building: the last setup stopped before it finished: Settings › Set up Android building tries again"
+      fi
+    fi
+    [ -n "$("$0" agents)" ] || echo "missing agent: install claude, codex or opencode"
+    [ "$(isolation_policy)" != required ] || "$DATA/bin/sandbox-check" || echo "missing sandbox: $("$DATA/bin/sandbox-check" --hint)"
+    [ "$(cat "$DATA/.library" 2>/dev/null)" = "$VERSION" ] || echo "missing the skills library: reinstall on the setup tab"
+    true ;;
+  # The Android toolchain this system uses (android.sh): for front ends, and for finding out why a build can't start.
+  toolchain) jq -n --arg os "$(android_os)" --arg arch "$(android_arch)" --arg kind "$(android_tools_kind)" --arg java "$(android_java_home)" \
+      --arg sdk "$ANDROID_HOME" --arg bt "$BUILD_TOOLS" --argjson aapt2 "$(aapt2_ok "$ANDROID_HOME" && echo true || echo false)" \
+      --argjson phone "$(android_phone && echo true || echo false)" --argjson mem "$(android_memory_mb)" --argjson cpus "$(android_cpus)" \
+      '{os: $os, arch: $arch, buildTools: $bt, toolsFrom: $kind, java: $java, sdk: $sdk, aapt2Runs: $aapt2, profile: (if $phone then "phone" else "computer" end), memoryMB: $mem, cpus: $cpus}' ;;
+  agents) agents_cmd "$@" ;;
+  # The steps that ask in a terminal (a passphrase that's never stored, GitHub's login): a window running that step.
+  terminal)
+    case ${1:-} in
+      lock) t="hatchlybox lock" ;; unlock) t="hatchlybox unlock" ;; play-connect) t="hatchlybox play connect" ;;
+      github-add) t="hatchlybox github add" ;; lock-passwd) t="hatchlybox lock passwd" ;; lock-off) t="hatchlybox lock off" ;;
+      *) echo "usage: hatchlybox terminal lock|unlock|lock-passwd|lock-off|play-connect|github-add" >&2; exit 1 ;;
+    esac
+    mkdir -p "$CACHE"; s=$CACHE/terminal-$1.sh
+    printf '%s\n' '#!/usr/bin/env bash' "$(printf '%q ' "$0" ${t#hatchlybox })" 'echo' 'read -rp "Press Enter to close this window. " _' > "$s"
+    w=$(term_run "$s") || { echo "couldn't open a terminal window: open one yourself and run $t" >&2; exit 1; }
+    jq -nc --arg t "$w" '{terminal: $t}' ;;
+  # isolated: agents and builds run in a sandbox; compatible: without one (phones); blocked: one is required and none works.
+  isolation) if "$DATA/bin/sandbox-check"; then echo isolated; elif [ "$(isolation_policy)" = required ]; then echo blocked; else echo compatible; fi ;;
+  health) health ;;
+  alive) worker_alive && echo alive || echo dead ;;
+  history) for f in "$CACHE"/jobs/*/job.json; do [ ! -f "$f" ] || cat "$f"; done | jq -sc 'sort_by(-.started)' ;;
+  version) echo "$VERSION" ;;
+  creations) mkdir -p "$CACHE"; list_apps; cat "$CACHE/creations.json" ;;
+  create) create_cmd "$@" ;;
+  make) make_cmd "$@" ;;
+  here) here_cmd "$@" ;;
+  remove) mutation_lock; remove_version "${1:-}" "${2:-}" || exit 1; list_apps ;;
+  route) route_cmd "$@" ;;
+  wrap) mutation_lock; need_android; wrap_cmd "$@" ;;
+  native) need_android; native_cmd "$@" ;;
+  sync) sync_cmd "$@" ;;
+  desktop) desktop_cmd "$@" ;;
+  # The game renderer (visual): ready, or the one line that installs it (never installs: front ends show it).
+  renderer) if [ ! -x "$DATA/visual/bin/visual" ]; then echo "not installed"; else "$DATA/visual/bin/visual" setup --check; fi ;;
+  platform) jq -n --arg e "$ENGINE" --argjson v "$VERSION" --arg h "$HOST" --arg n "$HOST_NAME" --arg c "$CAPABILITIES" --arg i "$INSTALLS" \
+      '{engine: $e, version: $v, platform: $h, name: $n, capabilities: ($c | split(" ") | map(select(. != ""))), installs: ($i | split(" ") | map(select(. != "")))}' ;;
+  *) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

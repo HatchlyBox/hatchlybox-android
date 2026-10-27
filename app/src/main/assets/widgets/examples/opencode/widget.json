@@ -1,0 +1,6 @@
+{
+  "name": "OpenCode",
+  "description": "A terminal running OpenCode full screen (any program works the same way)",
+  "size": "large",
+  "terminal": { "command": "opencode", "title": "opencode", "fontSize": 10 }
+}

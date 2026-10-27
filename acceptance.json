@@ -1,0 +1,136 @@
+{
+  "checks": [
+    {
+      "id": "compiled-regressions",
+      "title": "Compiled parser, routing and queue replay policy checks",
+      "status": "pass",
+      "note": "64 compiled parser, routing, creation policy and queue checks passed."
+    },
+    {
+      "id": "engine-monitor",
+      "title": "Job identity and terminal-state handling",
+      "status": "pass",
+      "note": "Seven isolated checks against the embedded shell monitor."
+    },
+    {
+      "id": "helper-rollback",
+      "title": "Binary, symlink and package rollback and failure cases",
+      "status": "pass",
+      "note": "Six checks use temporary mock helpers; no installed helper was modified."
+    },
+    {
+      "id": "stable-preserved",
+      "title": "Stable APK and original source remain unchanged",
+      "status": "pass",
+      "note": "Source archive contents and SHA-256 APK/source archive manifest verified."
+    },
+    {
+      "id": "nightly-build",
+      "title": "Nightly release assembles and has the intended package/signature",
+      "status": "pass",
+      "note": "Nightly 4 assembleRelease and signature verification passed. Package com.hatchlybox.nightly, version 1.0-nightly.4. Phone runtime unverified: wireless debugging off."
+    },
+    {
+      "id": "startup",
+      "title": "Nightly opens beside stable without replacing its data",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "create",
+      "title": "All Create modes and refusal paths retain the right request",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "queue",
+      "title": "Queue edit, reorder, cancellation and restart preserve helper and intent",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "contacts",
+      "title": "Duplicate names and multiple numbers use the selected endpoint",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "actions",
+      "title": "Editable preview, owner check, permissions and external results are accurate",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "lifecycle",
+      "title": "Cancellation, background work, interrupted task and restart recovery are safe",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "storage",
+      "title": "Low-space recovery, protected cleanup, trash restore and bundle rollback work",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "model",
+      "title": "Local model download pause, resume, removal and inference cancellation work",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "sync",
+      "title": "Pairing, background sync, error status, stop and resume work",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "appearance",
+      "title": "Large text, TalkBack, light/dark, landscape, keyboard and gesture behavior are usable",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "diagnostics",
+      "title": "Diagnostic export omits prompts, contact data, outputs and credentials",
+      "status": "skip",
+      "note": "Wireless debugging is off; no phone interaction was observed."
+    },
+    {
+      "id": "widget-state",
+      "title": "Concurrent state writers, lock interoperability, corrupt-state preservation and typed CLI values",
+      "status": "pass",
+      "note": "Five host checks execute the widget state merger; Java FileChannel/Python lock interoperability checked on this kernel. Android interaction remains unverified."
+    },
+    {
+      "id": "disk-preflight",
+      "title": "Engine preflight rejects insufficient or unreadable free-space reports",
+      "status": "pass",
+      "note": "Four checks execute the actual embedded shell function with isolated disk reports; no real setup/download was started."
+    },
+    {
+      "id": "compact-create-ui",
+      "title": "Inline expand/attach, Settings tasks/storage, typing queue popup and first-install clock at top",
+      "status": "skip",
+      "note": "Implemented and source reviewed; visual, keyboard, TalkBack and first-install behavior require device verification. Wireless debugging is off."
+    },
+    {
+      "id": "unified-create-modes",
+      "title": "Settings and textbox share all modes with Auto default and portable Android-first creation guidance",
+      "status": "skip",
+      "note": "Source reviewed; parser and policy checks run on host. Phone settings synchronization, restart persistence and generated app outcomes need device verification."
+    },
+    {
+      "id": "widget-templates",
+      "title": "Bundled widget JSON/scripts and actual weather/system/date data paths",
+      "status": "pass",
+      "note": "Ten isolated checks passed: bundled JSON/shell syntax, mocked weather success/offline/invalid responses and actual local System/Today data scripts."
+    },
+    {
+      "id": "widget-appearance",
+      "title": "Adaptive Apps, clock/alarm, calendar navigation, terminal statuses and refreshed system cards",
+      "status": "skip",
+      "note": "Implemented; phone is unavailable for visual, keyboard, gesture, lifecycle, TalkBack and upgrade verification."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "title": "godot",
+  "blurb": "real game engine (Godot 4.7): physics, sprites, tilemaps, particles, 3D, exported straight to an APK",
+  "libs": ["godot 4.7", "gdscript"],
+  "ideas": ["a platformer with levels and a saved best time", "a top-down space shooter with waves and power-ups"]
+}

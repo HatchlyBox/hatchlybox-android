@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Hatchlybox's mark (art-src/brand, 512 units): a white H with the signature mint fold, on the navy
+         background layer. The see-through cut in the H's bar is drawn as shapes (vectors have no masks). -->
+    <group android:scaleX="0.15" android:scaleY="0.15" android:translateX="15.600000000000001" android:translateY="15.600000000000001">
+        <!-- the H: two pillars and what's left of the bar right of the cut -->
+        <path android:fillColor="#F8FAFC" android:fillType="evenOdd" android:pathData="M143,144h58a12,12 0,0 1,12 12v200a12,12 0,0 1,-12 12h-58a12,12 0,0 1,-12 -12v-200a12,12 0,0 1,12 -12z M299,229L300,229L299,230.43Z M311,144h58a12,12 0,0 1,12 12v200a12,12 0,0 1,-12 12h-58a12,12 0,0 1,-12 -12v-200a12,12 0,0 1,12 -12z M265.70,278L299,278L299,230.43Z" />
+        <!-- the signature mint fold -->
+        <path android:fillColor="#56DCC9" android:pathData="M212,229H266L231,279H212Z" />
+    </group>
+</vector>

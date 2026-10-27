@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Something is being made: Hatchlybox's mark with a creation sparkle -->
+    <group android:scaleX="0.063" android:scaleY="0.063" android:translateX="-6.128" android:translateY="-2.128">
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M143,144h58a12,12 0,0 1,12 12v200a12,12 0,0 1,-12 12h-58a12,12 0,0 1,-12 -12v-200a12,12 0,0 1,12 -12z M299,229L300,229L299,230.43Z M311,144h58a12,12 0,0 1,12 12v200a12,12 0,0 1,-12 12h-58a12,12 0,0 1,-12 -12v-200a12,12 0,0 1,12 -12z M265.70,278L299,278L299,230.43Z M212,229H266L231,279H212Z" />
+    </group>
+    <group>
+        <path android:fillColor="#FFFFFFFF" android:pathData="M19.6,0.9999999999999996Q20.608,3.5919999999999996 23.200000000000003,4.6Q20.608,5.608 19.6,8.2Q18.592000000000002,5.608 16.0,4.6Q18.592000000000002,3.5919999999999996 19.6,0.9999999999999996Z" />
+    </group>
+</vector>

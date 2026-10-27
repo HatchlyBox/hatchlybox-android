@@ -1,0 +1,8 @@
+{
+  "name": "Today",
+  "size": "wide",
+  "ui": { "type": "column", "arrange": "between", "height": 128, "children": [
+    { "type": "text", "text": "{now:EEEE}", "style": "label", "color": "muted" },
+    { "type": "clock", "format": "HH:mm", "style": "display" },
+    { "type": "text", "text": "{now:d MMMM}", "style": "body", "color": "primary" } ] }
+}

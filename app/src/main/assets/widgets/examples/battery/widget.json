@@ -1,0 +1,121 @@
+{
+  "name": "Battery",
+  "description": "The phone's battery from {phone.*} values (no script): the charge as a ring in green, yellow or red, and whether it's charging",
+  "size": "small",
+  "tap": {
+    "open": "phone:battery"
+  },
+  "ui": {
+    "type": "column",
+    "gap": 10,
+    "children": [
+      {
+        "type": "header",
+        "text": "Battery",
+        "icon": "battery",
+        "color": "{phone.batteryTone}",
+        "trailing": "{phone.batteryTemp}"
+      },
+      {
+        "type": "box",
+        "align": "center",
+        "weight": 1,
+        "children": [
+          {
+            "type": "meter",
+            "value": "{phone.battery}",
+            "label": "{phone.batteryStatus}",
+            "color": "{phone.batteryTone}",
+            "size": 72
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "text": "{phone.powerSource} \u00b7 {phone.batteryTemp}",
+        "style": "caption",
+        "color": "muted",
+        "priority": 3,
+        "lines": 1
+      },
+      {
+        "type": "text",
+        "text": "Battery health: {phone.batteryHealth}",
+        "style": "caption",
+        "color": "muted",
+        "priority": 3,
+        "lines": 1
+      }
+    ]
+  },
+  "views": [
+    {
+      "when": "tiny",
+      "title": false,
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "meter",
+            "value": "{phone.battery}",
+            "color": "{phone.batteryTone}",
+            "size": 56
+          }
+        ],
+        "align": "center",
+        "arrange": "center",
+        "weight": 1
+      }
+    },
+    {
+      "when": "wide",
+      "ui": {
+        "type": "row",
+        "children": [
+          {
+            "type": "meter",
+            "value": "{phone.battery}",
+            "color": "{phone.batteryTone}",
+            "size": 64
+          },
+          {
+            "type": "column",
+            "children": [
+              {
+                "type": "text",
+                "text": "Battery",
+                "style": "label",
+                "color": "muted"
+              },
+              {
+                "type": "text",
+                "text": "{phone.battery}%",
+                "style": "headline",
+                "lines": 1
+              },
+              {
+                "type": "text",
+                "text": "{phone.batteryStatus}",
+                "style": "body",
+                "color": "{phone.batteryTone}",
+                "lines": 1
+              },
+              {
+                "type": "text",
+                "text": "{phone.batteryTemp}",
+                "style": "caption",
+                "color": "muted",
+                "lines": 1
+              }
+            ],
+            "gap": 2,
+            "weight": 1
+          }
+        ],
+        "gap": 16,
+        "align": "center"
+      }
+    }
+  ],
+  "version": 3
+}

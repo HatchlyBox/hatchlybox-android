@@ -1,0 +1,6 @@
+{
+  "title": "media",
+  "blurb": "plays sound and video: a player with play, pause and seek, streams and bundled sounds",
+  "libs": ["media3"],
+  "ideas": ["a white-noise app with rain and ocean sounds", "an internet radio player for my favourite stations"]
+}

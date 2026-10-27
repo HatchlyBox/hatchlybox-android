@@ -1,0 +1,16 @@
+.gradle/
+build/
+app/build/
+local.properties
+gradle.properties
+.hatchlybox.json
+play/shots/
+*.apk
+*.aab
+*.p12
+*.jks
+*.keystore
+*.pem
+*.pass
+service-account*.json
+.env

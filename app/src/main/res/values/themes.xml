@@ -1,0 +1,4 @@
+<resources>
+    <!-- Light or dark with the system, so the window and the web apps' prefers-color-scheme match the phone. -->
+    <style name="Theme.Hatchlybox" parent="@android:style/Theme.Material.Light.NoActionBar" />
+</resources>

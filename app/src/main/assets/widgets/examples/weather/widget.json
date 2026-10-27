@@ -1,0 +1,335 @@
+{
+  "name": "Weather",
+  "description": "Live data from the internet with a data script: the weather where you are, and today's hours as a line; a tap opens the hours and the next days",
+  "size": "small",
+  "refresh": 1800,
+  "data": "./data.sh",
+  "state": {
+    "temp": "\u2013",
+    "desc": "Loading\u2026",
+    "place": "",
+    "hours": [],
+    "feels": "\u2013",
+    "hi": "\u2013",
+    "lo": "\u2013",
+    "wind": "\u2013",
+    "humidity": "\u2013",
+    "rain": "\u2013",
+    "hourly": [],
+    "days": [],
+    "icon": "cloud",
+    "updated": "not yet"
+  },
+  "ui": {
+    "type": "column",
+    "gap": 4,
+    "children": [
+      {
+        "type": "header",
+        "text": "{place}",
+        "icon": "{icon}"
+      },
+      {
+        "type": "text",
+        "text": "{temp}\u00b0",
+        "style": "display"
+      },
+      {
+        "type": "text",
+        "text": "{desc}",
+        "style": "caption",
+        "lines": 1
+      },
+      {
+        "type": "spacer",
+        "weight": 1
+      },
+      {
+        "type": "chart",
+        "values": "{hours}",
+        "kind": "line",
+        "area": true,
+        "color": "primary",
+        "height": 28
+      },
+      {
+        "type": "text",
+        "if": "{error}",
+        "text": "{error}",
+        "style": "caption",
+        "color": "error",
+        "lines": 2
+      },
+      {
+        "type": "text",
+        "text": "\u00b0C \u00b7 wind km/h \u00b7 wttr.in \u00b7 updated {updated}",
+        "style": "caption",
+        "color": "muted",
+        "priority": 3,
+        "lines": 1
+      }
+    ]
+  },
+  "version": 5,
+  "views": [
+    {
+      "when": "tiny",
+      "title": false,
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "icon",
+            "name": "{icon}",
+            "color": "primary",
+            "size": 26
+          },
+          {
+            "type": "text",
+            "text": "{temp}\u00b0",
+            "style": "headline",
+            "lines": 1
+          }
+        ],
+        "align": "center",
+        "arrange": "center",
+        "gap": 2
+      }
+    },
+    {
+      "when": "wide",
+      "ui": {
+        "type": "row",
+        "children": [
+          {
+            "type": "icon",
+            "name": "{icon}",
+            "color": "primary",
+            "size": 36
+          },
+          {
+            "type": "column",
+            "children": [
+              {
+                "type": "text",
+                "text": "{temp}\u00b0",
+                "style": "display",
+                "lines": 1
+              },
+              {
+                "type": "text",
+                "text": "{desc}",
+                "style": "caption",
+                "lines": 1
+              }
+            ],
+            "gap": 0
+          },
+          {
+            "type": "column",
+            "children": [
+              {
+                "type": "text",
+                "text": "{place}",
+                "style": "label",
+                "color": "muted",
+                "lines": 1
+              },
+              {
+                "type": "chart",
+                "values": "{hours}",
+                "kind": "line",
+                "area": true,
+                "color": "primary",
+                "height": 28,
+                "weight": 1
+              }
+            ],
+            "gap": 4,
+            "weight": 1
+          }
+        ],
+        "gap": 14,
+        "align": "center"
+      }
+    }
+  ],
+  "screen": {
+    "title": "{place}",
+    "ui": {
+      "type": "column",
+      "scroll": true,
+      "gap": 14,
+      "children": [
+        {
+          "type": "row",
+          "gap": 14,
+          "align": "center",
+          "children": [
+            {
+              "type": "icon",
+              "name": "{icon}",
+              "size": 48,
+              "color": "primary"
+            },
+            {
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "{temp}\u00b0",
+                  "style": "display"
+                },
+                {
+                  "type": "text",
+                  "text": "{desc}",
+                  "style": "body",
+                  "color": "muted"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Feels like {feels}\u00b0 \u00b7 high {hi}\u00b0 \u00b7 low {lo}\u00b0",
+          "style": "caption"
+        },
+        {
+          "type": "row",
+          "gap": 8,
+          "children": [
+            {
+              "type": "stat",
+              "label": "Wind",
+              "value": "{wind} km/h",
+              "icon": "speed",
+              "color": "primary",
+              "weight": 1
+            },
+            {
+              "type": "stat",
+              "label": "Humidity",
+              "value": "{humidity}%",
+              "icon": "water",
+              "color": "primary",
+              "weight": 1
+            },
+            {
+              "type": "stat",
+              "label": "Rain",
+              "value": "{rain}%",
+              "icon": "rain",
+              "color": "primary",
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "type": "header",
+          "text": "Today",
+          "icon": "schedule"
+        },
+        {
+          "type": "chart",
+          "values": "{hours}",
+          "kind": "line",
+          "area": true,
+          "color": "primary",
+          "height": 96
+        },
+        {
+          "type": "list",
+          "items": "{hourly}",
+          "max": 8,
+          "gap": 8,
+          "item": {
+            "type": "row",
+            "gap": 8,
+            "align": "center",
+            "children": [
+              {
+                "type": "text",
+                "text": "{item.time}",
+                "style": "label",
+                "width": 56
+              },
+              {
+                "type": "text",
+                "text": "{item.desc}",
+                "style": "body",
+                "color": "muted",
+                "lines": 1,
+                "weight": 1
+              },
+              {
+                "type": "text",
+                "text": "{item.rain}%",
+                "style": "caption",
+                "width": 44
+              },
+              {
+                "type": "text",
+                "text": "{item.temp}\u00b0",
+                "style": "body",
+                "bold": true
+              }
+            ]
+          }
+        },
+        {
+          "type": "header",
+          "text": "Next days",
+          "icon": "calendar"
+        },
+        {
+          "type": "list",
+          "items": "{days}",
+          "gap": 10,
+          "item": {
+            "type": "row",
+            "gap": 10,
+            "align": "center",
+            "children": [
+              {
+                "type": "text",
+                "text": "{item.day}",
+                "style": "body",
+                "width": 56
+              },
+              {
+                "type": "icon",
+                "name": "{item.icon}",
+                "color": "primary"
+              },
+              {
+                "type": "spacer",
+                "weight": 1
+              },
+              {
+                "type": "text",
+                "text": "{item.lo}\u00b0 / {item.hi}\u00b0",
+                "style": "body",
+                "bold": true
+              }
+            ]
+          }
+        },
+        {
+          "type": "button",
+          "text": "Refresh",
+          "action": {
+            "refresh": true
+          }
+        },
+        {
+          "type": "text",
+          "text": "{error}",
+          "if": "{error}",
+          "style": "caption",
+          "color": "error"
+        }
+      ]
+    }
+  }
+}

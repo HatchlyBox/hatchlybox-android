@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+# zip-pick <url> <dest-dir> [name-substring...]: lists a remote zip, or extracts only the matching entries,
+# with HTTP range requests (Godot's export templates are 1.3 GB; the Android ones are a small part).
+import struct, sys, urllib.request, zlib, os
+
+def get(url, start, end):
+    req = urllib.request.Request(url, headers={"Range": f"bytes={start}-{end}", "User-Agent": "hatchlybox"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        if r.status != 206: sys.exit("the server doesn't support partial downloads")
+        return r.read()
+
+def size(url):
+    req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "hatchlybox"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return int(r.headers["Content-Length"]), r.url
+
+def entries(url, total):
+    tail = get(url, max(0, total - 65558), total - 1)
+    i = tail.rfind(b"PK\x05\x06")
+    if i < 0: sys.exit("no zip directory found")
+    count, cd_size, cd_off = struct.unpack("<HII", tail[i + 10:i + 20])
+    if cd_off == 0xFFFFFFFF or count == 0xFFFF:  # zip64
+        j = tail.rfind(b"PK\x06\x07")
+        (eocd64,) = struct.unpack("<Q", tail[j + 8:j + 16])
+        rec = get(url, eocd64, eocd64 + 55)
+        count, cd_size, cd_off = struct.unpack("<QQQ", rec[32:56])
+    cd = get(url, cd_off, cd_off + cd_size - 1)
+    p = 0
+    for _ in range(count):
+        (method, crc, csize, usize, nlen, xlen, clen, off) = struct.unpack("<HxxxxIIIHHH8xI", cd[p + 10:p + 46])
+        name = cd[p + 46:p + 46 + nlen].decode()
+        extra = cd[p + 46 + nlen:p + 46 + nlen + xlen]
+        q = 0
+        while q + 4 <= len(extra):  # zip64 sizes and offset
+            hid, hlen = struct.unpack("<HH", extra[q:q + 4])
+            if hid == 1:
+                vals = list(struct.unpack("<" + "Q" * (hlen // 8), extra[q + 4:q + 4 + hlen]))
+                if usize == 0xFFFFFFFF: usize = vals.pop(0)
+                if csize == 0xFFFFFFFF: csize = vals.pop(0)
+                if off == 0xFFFFFFFF: off = vals.pop(0)
+            q += 4 + hlen
+        yield name, method, crc, csize, usize, off
+        p += 46 + nlen + xlen + clen
+
+def main():
+    url, dest, pats = sys.argv[1], sys.argv[2], sys.argv[3:]
+    total, url = size(url)
+    for name, method, crc, csize, usize, off in entries(url, total):
+        if not pats: print(f"{usize:>12} {name}"); continue
+        if name.endswith("/") or not any(s in name for s in pats): continue
+        head = get(url, off, off + 29)
+        nlen, xlen = struct.unpack("<HH", head[26:30])
+        start = off + 30 + nlen + xlen
+        target = os.path.join(dest, os.path.basename(name))
+        os.makedirs(dest, exist_ok=True)
+        z = zlib.decompressobj(-15) if method == 8 else None
+        got, c = 0, 0
+        with open(target + ".part", "wb") as f:
+            while got < csize:
+                chunk = get(url, start + got, start + min(csize, got + (8 << 20)) - 1)
+                got += len(chunk)
+                data = z.decompress(chunk) if z else chunk
+                c = zlib.crc32(data, c); f.write(data)
+            if z: data = z.flush(); c = zlib.crc32(data, c); f.write(data)
+        if c != crc: os.remove(target + ".part"); sys.exit(f"checksum mismatch in {name}")
+        os.replace(target + ".part", target)
+        print(f"{usize:>12} {target}")
+
+main()

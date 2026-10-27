@@ -1,0 +1,6 @@
+{
+  "title": "data",
+  "blurb": "saves lists and settings on the phone, so nothing is lost when the app closes",
+  "libs": ["room", "datastore"],
+  "ideas": ["a to-do list that remembers what's done", "a mood journal with one entry per day"]
+}

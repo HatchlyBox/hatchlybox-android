@@ -1,0 +1,6 @@
+{
+  "title": "play ready",
+  "blurb": "checks permissions, data safety and content before an app goes to google play",
+  "libs": ["checklist"],
+  "ideas": []
+}

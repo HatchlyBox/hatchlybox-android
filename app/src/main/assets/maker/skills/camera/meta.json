@@ -1,0 +1,6 @@
+{
+  "title": "camera",
+  "blurb": "a live camera preview and photos kept in the app, with the permission asked politely",
+  "libs": ["camerax"],
+  "ideas": ["a plant diary with a photo per day", "a receipt keeper that photographs each receipt"]
+}

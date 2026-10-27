@@ -1,0 +1,6 @@
+{
+  "title": "network",
+  "blurb": "shows live data from the internet, with loading and retry when offline",
+  "libs": ["ktor", "serialization", "coil"],
+  "ideas": ["a currency converter with today's rates", "a random quote app with a share button"]
+}

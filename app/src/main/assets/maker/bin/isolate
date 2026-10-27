@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# isolate <agent|build> <project> <command...>: run an agent or a build with only what it needs.
+#   Linux and Windows (WSL): bubblewrap. A minimal filesystem: the system read-only, the project, the agent's own
+#     login and program, the engine's helpers; not the user's home, other creations, keys or the Windows drives.
+#   macOS: sandbox-exec. The real filesystem, but writes only to the project and the agent's own folders, and no
+#     reading of other creations, the engine's keys, SSH/cloud credentials, mail, browsers or documents.
+#   Phones (proot): no sandbox is possible; agentIsolation=compatible runs it as before, required refuses.
+# Publishing keys are never visible. agentIsolation (settings) wins over the platform's ISOLATION default.
+# HATCHLYBOX_ISOLATE_SHOW=1 prints the sandbox's arguments (or macOS profile) instead of running (tests, support).
+set -euo pipefail
+mode=$1 project=$2; shift 2
+project=$(realpath "$project")
+_self=${BASH_SOURCE[0]}; while [ -L "$_self" ]; do _l=$(readlink "$_self"); case $_l in /*) _self=$_l ;; *) _self=$(dirname "$_self")/$_l ;; esac; done
+_bin=$(dirname "$_self")
+source "$_bin/paths.sh"; source "$_bin/compat.sh"; source "$_bin/android.sh"
+data=$DATA cache=$CACHE
+agenthome=$cache/agent-home
+os=${HATCHLYBOX_TEST_OS:-$(uname -s)}
+# The platform's ADB port, agent settings and isolation default (platforms/<name>/platform.env).
+ADB_PORT=5037 OPENCODE_PERMISSION="" ISOLATION=compatible
+[ -f "$data/platform.env" ] && . "$data/platform.env"
+extra=(); [ -z "$OPENCODE_PERMISSION" ] || extra=(OPENCODE_PERMISSION="$OPENCODE_PERMISSION")
+managed=0; [ "$mode" != agent ] || managed=1
+java=$(android_java_home 2>/dev/null || true); java=${java:-${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}}
+sdk=$(cat "$data/sdk.path" 2>/dev/null || true); sdk=${sdk:-${ANDROID_HOME:-/opt/android-sdk}}
+show() { [ "${HATCHLYBOX_ISOLATE_SHOW:-}" = 1 ]; }
+# siblings: the same creation's other versions (its Android project, its versions for other systems), which the agent
+# reads to make or update this one; never another creation's.
+siblings=()
+case $project in
+  "$(realpath -m "$APPS")"/*) s=${project#"$(realpath -m "$APPS")"/}; s=${s%%/*}; [ ! -d "$PORTS/$s" ] || siblings+=("$(realpath "$PORTS/$s")") ;;
+  "$(realpath -m "$PORTS")"/*/*) s=${project#"$(realpath -m "$PORTS")"/}; s=${s%%/*}
+    [ ! -d "$APPS/$s" ] || siblings+=("$(realpath "$APPS/$s")")
+    [ ! -d "$PORTS/$s" ] || siblings+=("$(realpath "$PORTS/$s")") ;;
+esac
+
+kind=$("$data/bin/sandbox-check" --kind 2>/dev/null || echo none)
+if [ "$kind" = none ]; then
+  policy=$(jq -r ".agentIsolation // \"$ISOLATION\"" "$data/settings.json" 2>/dev/null || echo "$ISOLATION")
+  if [ "$policy" = required ]; then
+    echo "agents and builds must run isolated here (agentIsolation=required), and no sandbox works: $("$data/bin/sandbox-check" --hint 2>/dev/null). Or allow running without one: hatchlybox set agentIsolation compatible" >&2
+    exit 126
+  fi
+  # This preserves existing on-phone operation; it does not claim filesystem isolation.
+  echo "compatibility mode: this kernel cannot isolate filesystem access" >&2
+  show && { echo "none"; exit 0; }
+  # Keep the agent's original login store so OAuth refresh cannot invalidate a discarded copy.
+  cd "$project"
+  env -i HOME="$HOME" PATH="$PATH" LANG=C.UTF-8 JAVA_HOME="$java" \
+    ANDROID_HOME="$sdk" GRADLE_USER_HOME="$HOME/.gradle" \
+    "${extra[@]}" HATCHLYBOX_MANAGED_AGENT="$managed" HATCHLYBOX_SANDBOX=1 HATCHLYBOX_HOME="$data" HATCHLYBOX_CACHE="$cache/agent-peek" \
+    ADB_SERIAL="${ADB_SERIAL:-}" ADB_SERVER_SOCKET=tcp:127.0.0.1:$ADB_PORT "$@"
+  exit $?
+fi
+
+# The agent this run is for, and its login file (only that one is exposed on Linux).
+agent="" auth=""
+if [ "$mode" = agent ]; then
+  case ${1:-} in env) agent=claude ;; *) agent=${1:-} ;; esac
+  case $agent in
+    codex) auth=.codex/auth.json ;;
+    claude) auth=.claude/.credentials.json ;;
+    opencode) auth=.local/share/opencode/auth.json ;;
+    *) echo 'unsupported isolated agent' >&2; exit 1 ;;
+  esac
+fi
+
+# install_root <real path of a program in the home folder>: the folder that holds that program and what it loads,
+# never a whole ~/.local or the home itself.
+install_root() {
+  local r=$1 rest top
+  case $r in
+    */lib/node_modules/*)
+      # npm: the package (with its own node_modules), e.g. ~/.npm-global/lib/node_modules/@openai/codex.
+      rest=${r#*/lib/node_modules/}; top=${rest%%/*}
+      [[ $top == @* ]] && top=$top/$(cut -d/ -f2 <<< "$rest")
+      echo "${r%%/lib/node_modules/*}/lib/node_modules/$top" ;;
+    "$HOME"/.local/share/*/*) rest=${r#"$HOME"/.local/share/}; echo "$HOME/.local/share/${rest%%/*}" ;;
+    # A single program in ~/.local/bin: just that file.
+    "$HOME"/.local/bin/*) echo "$r" ;;
+    # ~/.nvm/versions/node/v22/bin/node: that Node (lib and include beside bin).
+    */bin/*) local b=${r%/bin/*}; if [ "$b" = "$HOME" ] || [ "$b" = "$HOME/.local" ]; then dirname "$r"; else echo "$b"; fi ;;
+    "$HOME"/.*/*) rest=${r#"$HOME"/}; echo "$HOME/${rest%%/*}" ;;
+    *) dirname "$r" ;;
+  esac
+}
+
+# The coding agents and their runtimes in the user's home (system-wide installs are under /usr, /opt, /nix):
+# "<command path> <real path> <install root>" per line.
+home_programs() {
+  local c p r root
+  for c in claude codex opencode node bun deno npx; do
+    p=$(type -P "$c" 2>/dev/null) || continue
+    r=$(realpath "$p" 2>/dev/null) || continue
+    case $r in "$HOME"/*) ;; *) continue ;; esac
+    root=$(install_root "$r")
+    case $root in "$HOME"|"$HOME"/.ssh*|"$HOME"/.gnupg*|"$HOME"/.config|"$HOME"/.local|"$HOME"/.local/share) continue ;; esac
+    echo "$p"$'\t'"$r"$'\t'"$root"
+  done
+}
+
+# ---- macOS: sandbox-exec (Seatbelt). Later rules win, so each deny is followed by its exceptions. ----
+if [ "$kind" = seatbelt ]; then
+  q() { local s; s=$(realpath -m "$1"); s=${s//\\/\\\\}; printf '"%s"' "${s//\"/\\\"}"; }
+  mkdir -p "$cache/gradle-home" "$cache/agent-peek" "$HOME/.gradle"
+  sb="(version 1)
+(allow default)
+(deny file-write*)
+(allow file-write*
+  (subpath $(q "$project")) (subpath $(q "$cache/gradle-home")) (subpath $(q "$cache/agent-peek"))
+  (subpath $(q "$HOME/.gradle")) (subpath $(q "$HOME/.android")) (subpath $(q "$HOME/Library/Caches"))
+  (subpath $(q "$HOME/Library/Application Support/Godot")) (subpath $(q "$HOME/.cache"))
+  (subpath \"/private/tmp\") (subpath \"/private/var/folders\") (subpath \"/dev\")"
+  # The agent's own settings, sessions and caches (its login refreshes there; Claude's is in the Keychain).
+  for p in .claude .claude.json .codex .local/share/opencode .local/state/opencode .config/opencode .npm .bun; do
+    sb+=" (subpath $(q "$HOME/$p"))"
+  done
+  sb+=")
+; The project's history and identity are the engine's: read-only.
+(deny file-write* (subpath $(q "$project/.git")) (literal $(q "$project/.hatchlybox.json")) (literal $(q "$project/.port.json")))
+; The user's secrets and private files (first: the project's own rules below win, wherever it is).
+(deny file-read*"
+  for p in .ssh .gnupg .aws .azure .config/gcloud .config/gh .kube .docker .netrc .git-credentials .npmrc .pypirc \
+           Documents Desktop Downloads Pictures Movies Music Library/Mail Library/Messages Library/Safari Library/Cookies \
+           "Library/Application Support/Google" "Library/Application Support/Firefox" "Library/Application Support/BraveSoftware" \
+           "Library/Application Support/com.apple.TCC"; do
+    sb+=" (subpath $(q "$HOME/$p"))"
+  done
+  sb+=")
+; Other creations, backups and the engine's keys and accounts.
+(deny file-read* (subpath $(q "$APPS")) (subpath $(q "$PORTS")) (subpath $(q "$BACKUPS")) (subpath $(q "$data")))
+(allow file-read* (subpath $(q "$project")) (literal $(q "$APPS")) (literal $(q "$PORTS"))"
+  for p in "${siblings[@]}"; do sb+=" (subpath $(q "$p"))"; done
+  for p in bin template skills visual visual-learned godot AGENTS.md platform.env environment.md sdk.path settings.json; do
+    sb+=" (subpath $(q "$data/$p"))"
+  done
+  sb+=" (literal $(q "$data")))"
+  # The Keychain stays readable: Claude Code keeps its login there, and each item asks before another program reads it.
+  if show; then printf '%s\n' "$sb"; exit 0; fi
+  cd "$project"
+  exec env -i HOME="$HOME" PATH="$PATH" USER="${USER:-}" TMPDIR="${TMPDIR:-/tmp}" LANG="${LANG:-en_US.UTF-8}" TERM="${TERM:-dumb}" \
+    JAVA_HOME="$java" ANDROID_HOME="$sdk" ANDROID_SDK_ROOT="$sdk" GRADLE_USER_HOME="$cache/gradle-home" \
+    "${extra[@]}" HATCHLYBOX_MANAGED_AGENT="$managed" HATCHLYBOX_SANDBOX=1 HATCHLYBOX_HOME="$data" HATCHLYBOX_CACHE="$cache/agent-peek" \
+    ADB_SERIAL="${ADB_SERIAL:-}" ADB_SERVER_SOCKET=tcp:127.0.0.1:$ADB_PORT \
+    sandbox-exec -p "$sb" "$@"
+fi
+
+# ---- Linux (and WSL): bubblewrap ----
+mkdir -p "$cache/gradle-home" "$agenthome/.codex" "$agenthome/.claude" "$agenthome/.local/share/opencode" "$HOME/.gradle"
+# The links the sandbox makes in its home (its helpers, the agents' commands) are made again each run: one left from
+# before (a moved install, an agent's newer version) would stop bwrap ("can't make symlink").
+[ ! -d "$agenthome/.local/bin" ] || find "$agenthome/.local/bin" -maxdepth 1 -type l -delete
+args=(--die-with-parent --new-session --unshare-pid --unshare-ipc --unshare-uts --cap-drop ALL
+  --clearenv --setenv HOME "$HOME" --setenv PATH "$HOME/.local/bin:$PATH" --setenv LANG C.UTF-8
+  --setenv JAVA_HOME "$java" --setenv ANDROID_HOME "$sdk" --setenv ANDROID_SDK_ROOT "$sdk"
+  --setenv HATCHLYBOX_MANAGED_AGENT "$managed" --setenv HATCHLYBOX_SANDBOX 1 --setenv HATCHLYBOX_HOME "$data" --setenv HATCHLYBOX_CACHE "$cache"
+  --ro-bind /usr /usr --ro-bind /etc /etc)
+# /bin, /lib…: links into /usr on most systems (as they are), real folders on older ones.
+for l in bin sbin lib lib32 lib64 libx32; do
+  if [ -L "/$l" ]; then args+=(--symlink "$(readlink "/$l")" "/$l"); elif [ -d "/$l" ]; then args+=(--ro-bind "/$l" "/$l"); fi
+done
+args+=(--proc /proc --dev /dev --tmpfs /tmp
+  --tmpfs "$HOME" --bind "$agenthome" "$HOME")
+# The creation's other versions read-only, before the project itself (read-write, mounted over them where it's inside).
+for p in "${siblings[@]}"; do args+=(--ro-bind "$p" "$p"); done
+args+=(--bind "$project" "$project"
+  --bind "$cache/gradle-home" "$HOME/.gradle" --chdir "$project")
+# Programs outside /usr (the phones' /system; /opt, Nix, snaps; WSL's GPU libraries). Not /mnt: the Windows drives.
+for p in /opt /nix /snap /var/lib/snapd/snap /usr/lib/wsl /system /apex /vendor /system_ext /product; do [ ! -e "$p" ] || args+=(--ro-bind "$p" "$p"); done
+# Name lookups where /etc/resolv.conf is a link into /run (systemd-resolved, NetworkManager, WSL).
+r=$(realpath /etc/resolv.conf 2>/dev/null || true)
+case $r in /run/*|/mnt/wsl/*) args+=(--ro-bind "$(dirname "$r")" "$(dirname "$r")") ;; esac
+for p in "$data/sdk.path" "$sdk" "$java"; do [ ! -e "$p" ] || args+=(--ro-bind "$p" "$p"); done
+[ ! -d "$project/.git" ] || args+=(--ro-bind "$project/.git" "$project/.git")
+for p in .hatchlybox.json .port.json; do [ ! -f "$project/$p" ] || args+=(--ro-bind "$project/$p" "$project/$p"); done
+# Isolated Gradle has its own caches, daemon registry and wrapper. The wrapper always locks and writes beside its
+# distribution (read-only, every build failed), so the ones the user's Gradle already unpacked are copied in (a
+# reflink where the filesystem can), not shared: a build can't change what runs outside the sandbox.
+for d in "$HOME"/.gradle/wrapper/dists/*/*; do
+  t=$cache/gradle-home/${d#"$HOME/.gradle/"}
+  [ -d "$d" ] && ls "$d"/*.ok >/dev/null 2>&1 && ! ls "$t"/*.ok >/dev/null 2>&1 || continue
+  rm -rf "$t" "$t.new"; mkdir -p "$(dirname "$t")"
+  cp -R --reflink=auto "$d" "$t.new" 2>/dev/null && mv "$t.new" "$t" || rm -rf "$t.new"
+done
+# Agent executables, not mise's state or arbitrary user programs.
+shared=()
+for p in "$HOME/.local/share/mise/installs" "$HOME/.opencode/bin"; do
+  [ ! -d "$p" ] || { args+=(--ro-bind "$p" "$p"); shared+=("$p"); }
+done
+in_shared() { local s; for s in "${shared[@]}"; do [[ $1 == "$s"/* ]] && return 0; done; return 1; }
+# Agents and runtimes installed in the home folder (a computer's ~/.local/bin/claude, npm's or nvm's prefix):
+# their install folder read-only, and the command where the PATH finds it.
+seen=" "
+while IFS=$'\t' read -r p r root; do
+  [ -n "$p" ] || continue
+  # Already inside, where the PATH finds it (mise's installs): nothing to add (not all of ~/.local/share/mise).
+  in_shared "$p" && in_shared "$r" && continue
+  [[ $seen == *" $root "* ]] || { args+=(--ro-bind "$root" "$root"); seen+="$root "; }
+  if ! [[ $p == "$root"/* ]] && [ "$p" != "$r" ]; then
+    [ ! -L "$agenthome${p#"$HOME"}" ] || rm -f "$agenthome${p#"$HOME"}"
+    args+=(--symlink "$r" "$p")
+  fi
+done < <(home_programs)
+# Helpers are read-only. No service accounts, upload keys, GitHub configuration or other projects.
+args+=(--ro-bind "$data/bin" "$data/bin" --dir "$HOME/.local/bin" --symlink "$data/bin/hatchlybox" "$HOME/.local/bin/hatchlybox")
+# Godot (the godot skill): the engine, its templates, its settings and the debug key it signs with.
+if [ -d "$data/godot" ]; then
+  args+=(--ro-bind "$data/godot" "$data/godot" --symlink "$data/bin/godot" "$HOME/.local/bin/godot")
+  for p in "${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates" "${XDG_CONFIG_HOME:-$HOME/.config}/godot" "$HOME/.android/debug.keystore"; do
+    [ ! -e "$p" ] || args+=(--ro-bind "$p" "$p")
+  done
+fi
+# Visual Intelligence (the visual skill): its tools, technique library and what earlier apps learned.
+for p in "$data/visual" "$data/visual-learned"; do [ ! -d "$p" ] || args+=(--ro-bind "$p" "$p"); done
+[ ! -x "$data/visual/bin/visual" ] || args+=(--symlink "$data/visual/bin/visual" "$HOME/.local/bin/visual")
+if [ "$mode" = agent ]; then
+  # Only the selected agent's auth file is exposed; no host sessions, plugins or config commands.
+  [ ! -f "$HOME/$auth" ] || args+=(--ro-bind "$HOME/$auth" "$HOME/$auth")
+  # Copy the onboarding flag without the host's project history.
+  if [ "$agent" = claude ]; then
+    printf '{"hasCompletedOnboarding":true}' > "$agenthome/.claude.json"
+  fi
+fi
+# ADB is a narrow localhost capability; credentials and backend state are never exposed.
+# peek runs in its own cache. Socket access is necessary for agent HTTP requests and wireless ADB.
+args+=(--setenv ADB_SERIAL "${ADB_SERIAL:-}" --setenv ADB_SERVER_SOCKET tcp:127.0.0.1:$ADB_PORT)
+[ -z "$OPENCODE_PERMISSION" ] || args+=(--setenv OPENCODE_PERMISSION "$OPENCODE_PERMISSION")
+if show; then printf '%s\n' "${args[@]}"; exit 0; fi
+exec bwrap "${args[@]}" -- "$@"

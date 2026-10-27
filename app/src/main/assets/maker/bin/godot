@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# godot: the Godot editor Hatchlybox installs (`hatchlybox godot`), for agents: run it headless.
+#   godot --headless --path godot --import
+#   godot --headless --path godot --check-only -s res://main.gd
+#   godot --headless --path godot --export-release Android ../app/build/outputs/apk/release/app-release.apk
+# On musl Linux (Hatchlybox's Alpine) it runs through a private glibc that only Godot uses.
+_self=${BASH_SOURCE[0]}; while [ -L "$_self" ]; do _l=$(readlink "$_self"); case $_l in /*) _self=$_l ;; *) _self=$(dirname "$_self")/$_l ;; esac; done
+source "$(dirname "$_self")/paths.sh"
+D=$DATA
+g=$(ls -d "$D"/godot/[0-9]*/godot 2>/dev/null | sort -V | tail -1)
+[ -x "$g" ] || { echo "Godot isn't installed yet: run hatchlybox godot (about 180 MB)" >&2; exit 127; }
+export GODOT_SILENCE_ROOT_WARNING=1
+# Release exports are signed with this phone's debug key unless another key is given, like the Gradle builds.
+export GODOT_ANDROID_KEYSTORE_RELEASE_PATH=${GODOT_ANDROID_KEYSTORE_RELEASE_PATH:-$HOME/.android/debug.keystore}
+export GODOT_ANDROID_KEYSTORE_RELEASE_USER=${GODOT_ANDROID_KEYSTORE_RELEASE_USER:-androiddebugkey}
+export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=${GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD:-android}
+l=$D/godot/glibc/lib
+if [ -e /lib/ld-musl-aarch64.so.1 ] && [ -x "$l/ld-linux-aarch64.so.1" ]; then
+  # visual render adds the Debian OpenGL libraries (HATCHLYBOX_GODOT_LIBS) for a real renderer.
+  exec "$l/ld-linux-aarch64.so.1" --library-path "$l${HATCHLYBOX_GODOT_LIBS:+:$HATCHLYBOX_GODOT_LIBS}" "$g" "$@"
+fi
+exec "$g" "$@"

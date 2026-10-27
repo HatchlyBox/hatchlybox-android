@@ -1,0 +1,6 @@
+{
+  "title": "reminders",
+  "blurb": "notifications at the right time: a timer, a daily nudge, a reminder while the app is closed",
+  "libs": ["workmanager", "notifications"],
+  "ideas": ["a water reminder that nudges me every few hours", "a habit tracker with a daily reminder"]
+}

@@ -1,0 +1,24 @@
+// Signs an app's release bundle with its Play upload key. `hatchlybox play prepare` sets, for this one
+// build, the paths of the key and of the file holding its password (HATCHLYBOX_KS, HATCHLYBOX_KS_PASS_FILE),
+// never the password itself: on Gradle's command line any program could read it, and in the environment
+// it would stay in a Gradle daemon started by this build for as long as that daemon runs.
+//   ./gradlew --init-script signing.gradle bundleRelease
+allprojects {
+    pluginManager.withPlugin('com.android.application') {
+        androidComponents {
+            finalizeDsl { android ->
+                def ks = System.getenv('HATCHLYBOX_KS')
+                def passFile = System.getenv('HATCHLYBOX_KS_PASS_FILE')
+                if (ks && passFile) {
+                    def pass = new File(passFile).text.trim()
+                    def upload = android.signingConfigs.create('hatchlyboxUpload')
+                    upload.storeFile = file(ks)
+                    upload.storePassword = pass
+                    upload.keyAlias = 'upload'
+                    upload.keyPassword = pass
+                    android.buildTypes.getByName('release').signingConfig = upload
+                }
+            }
+        }
+    }
+}

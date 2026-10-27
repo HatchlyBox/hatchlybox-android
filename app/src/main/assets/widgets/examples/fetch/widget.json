@@ -1,0 +1,342 @@
+{
+  "name": "Fetch",
+  "description": "This Linux the way fastfetch shows it: the logo, then the system's facts, then the theme's colours",
+  "version": 3,
+  "size": "wide",
+  "refresh": 600,
+  "data": "./data.sh",
+  "state": {
+    "logo": "",
+    "title": "root@hatchlybox",
+    "info": []
+  },
+  "tap": {
+    "refresh": true
+  },
+  "ui": {
+    "type": "column",
+    "gap": 8,
+    "children": [
+      {
+        "type": "row",
+        "gap": 14,
+        "children": [
+          {
+            "type": "text",
+            "text": "{logo}",
+            "font": "mono",
+            "size": 10,
+            "color": "primary",
+            "bold": true,
+            "wrap": false
+          },
+          {
+            "type": "column",
+            "gap": 1,
+            "weight": 1,
+            "children": [
+              {
+                "type": "text",
+                "text": "{title}",
+                "font": "mono",
+                "size": 12,
+                "color": "primary",
+                "bold": true,
+                "lines": 1
+              },
+              {
+                "type": "text",
+                "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+                "font": "mono",
+                "size": 10,
+                "color": "muted",
+                "lines": 1,
+                "wrap": false
+              },
+              {
+                "type": "list",
+                "items": "{info}",
+                "gap": 0,
+                "item": {
+                  "type": "row",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "{item.k}",
+                      "font": "mono",
+                      "size": 10,
+                      "color": "secondary",
+                      "bold": true,
+                      "width": 58,
+                      "lines": 1
+                    },
+                    {
+                      "type": "text",
+                      "text": "{item.v}",
+                      "font": "mono",
+                      "size": 10,
+                      "lines": 1,
+                      "weight": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "row",
+                "gap": 6,
+                "children": [
+                  {
+                    "type": "text",
+                    "text": "Battery",
+                    "font": "mono",
+                    "size": 10,
+                    "color": "secondary",
+                    "bold": true,
+                    "width": 58
+                  },
+                  {
+                    "type": "text",
+                    "text": "{phone.battery}% {phone.batteryStatus}",
+                    "font": "mono",
+                    "size": 10,
+                    "color": "{phone.batteryTone}",
+                    "lines": 1,
+                    "weight": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "row",
+        "gap": 0,
+        "children": [
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "surface",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "red",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "orange",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "yellow",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "green",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "cyan",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "blue",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "magenta",
+            "corner": 0
+          },
+          {
+            "type": "box",
+            "weight": 1,
+            "height": 10,
+            "background": "text",
+            "corner": 0
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "if": "{error}",
+        "text": "{error}",
+        "style": "caption",
+        "color": "error",
+        "lines": 2
+      },
+      {
+        "type": "text",
+        "text": "Hatchlybox Linux environment",
+        "style": "caption",
+        "color": "muted",
+        "priority": 3,
+        "lines": 1
+      }
+    ]
+  },
+  "views": [
+    {
+      "when": "tiny",
+      "title": false,
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "text",
+            "text": "{logo}",
+            "font": "mono",
+            "size": 6,
+            "color": "primary",
+            "bold": true,
+            "wrap": false
+          },
+          {
+            "type": "text",
+            "text": "{title}",
+            "font": "mono",
+            "size": 9,
+            "color": "primary",
+            "lines": 1
+          }
+        ],
+        "align": "center",
+        "arrange": "center",
+        "gap": 4
+      }
+    },
+    {
+      "when": "small tall",
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "text",
+            "text": "{title}",
+            "font": "mono",
+            "size": 12,
+            "color": "primary",
+            "bold": true,
+            "lines": 1
+          },
+          {
+            "type": "text",
+            "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+            "font": "mono",
+            "size": 10,
+            "color": "muted",
+            "lines": 1,
+            "wrap": false,
+            "priority": 3
+          },
+          {
+            "type": "list",
+            "items": "{info}",
+            "gap": 2,
+            "item": {
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "{item.k}",
+                  "font": "mono",
+                  "size": 9,
+                  "color": "secondary",
+                  "bold": true,
+                  "lines": 1
+                },
+                {
+                  "type": "text",
+                  "text": "{item.v}",
+                  "font": "mono",
+                  "size": 10,
+                  "lines": 1
+                }
+              ],
+              "gap": 0
+            }
+          },
+          {
+            "type": "row",
+            "children": [
+              {
+                "type": "box",
+                "weight": 1,
+                "height": 8,
+                "background": "red",
+                "corner": 0
+              },
+              {
+                "type": "box",
+                "weight": 1,
+                "height": 8,
+                "background": "orange",
+                "corner": 0
+              },
+              {
+                "type": "box",
+                "weight": 1,
+                "height": 8,
+                "background": "yellow",
+                "corner": 0
+              },
+              {
+                "type": "box",
+                "weight": 1,
+                "height": 8,
+                "background": "green",
+                "corner": 0
+              },
+              {
+                "type": "box",
+                "weight": 1,
+                "height": 8,
+                "background": "cyan",
+                "corner": 0
+              },
+              {
+                "type": "box",
+                "weight": 1,
+                "height": 8,
+                "background": "blue",
+                "corner": 0
+              },
+              {
+                "type": "box",
+                "weight": 1,
+                "height": 8,
+                "background": "magenta",
+                "corner": 0
+              }
+            ],
+            "gap": 0,
+            "priority": 2
+          }
+        ],
+        "gap": 4
+      }
+    }
+  ]
+}

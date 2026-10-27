@@ -1,0 +1,6 @@
+{
+  "title": "visual",
+  "blurb": "visual intelligence: plans the look, renders the game without a screen, measures and improves it",
+  "libs": ["godot 4.7", "technique library", "renderer", "image checks"],
+  "ideas": ["a cinematic medieval strategy game with castles, forests and big armies", "a cozy pixel-art farming game with day and night"]
+}

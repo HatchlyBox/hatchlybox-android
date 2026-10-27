@@ -1,0 +1,174 @@
+{
+  "name": "Hacker News",
+  "description": "A list from an API: the top stories, each opening its page when tapped; the header opens thirty more",
+  "size": "large",
+  "refresh": 1800,
+  "data": "./data.sh",
+  "state": {
+    "stories": []
+  },
+  "ui": {
+    "type": "column",
+    "gap": 10,
+    "children": [
+      {
+        "type": "header",
+        "text": "Hacker News",
+        "icon": "trending",
+        "color": "tertiary",
+        "trailing": "{now:HH:mm}",
+        "tap": {
+          "screen": true
+        }
+      },
+      {
+        "type": "list",
+        "items": "{stories}",
+        "max": 5,
+        "gap": 10,
+        "item": {
+          "type": "column",
+          "tap": {
+            "open": "{item.url}"
+          },
+          "children": [
+            {
+              "type": "text",
+              "text": "{item.title}",
+              "style": "body",
+              "lines": 2
+            },
+            {
+              "type": "text",
+              "text": "{item.points} points \u00b7 {item.comments} comments",
+              "style": "caption"
+            }
+          ]
+        }
+      },
+      {
+        "type": "text",
+        "if": "{error}",
+        "text": "{error}",
+        "style": "caption",
+        "color": "error"
+      },
+      {
+        "type": "text",
+        "text": "Hacker News \u00b7 tap a story to read",
+        "style": "caption",
+        "color": "muted",
+        "priority": 3,
+        "lines": 1
+      }
+    ]
+  },
+  "version": 5,
+  "views": [
+    {
+      "when": "tiny",
+      "title": false,
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "icon",
+            "name": "trending",
+            "color": "tertiary",
+            "size": 24
+          },
+          {
+            "type": "text",
+            "text": "{stories.0.title}",
+            "style": "caption",
+            "lines": 4
+          }
+        ],
+        "gap": 4,
+        "tap": {
+          "open": "{stories.0.url}"
+        }
+      }
+    },
+    {
+      "maxHeight": 200,
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "header",
+            "text": "Hacker News",
+            "icon": "trending",
+            "color": "tertiary"
+          },
+          {
+            "type": "list",
+            "items": "{stories}",
+            "max": 3,
+            "gap": 6,
+            "item": {
+              "type": "text",
+              "text": "{item.title}",
+              "style": "body",
+              "lines": 1,
+              "tap": {
+                "open": "{item.url}"
+              }
+            }
+          }
+        ],
+        "gap": 8
+      }
+    }
+  ],
+  "screen": {
+    "title": "Hacker News",
+    "ui": {
+      "type": "column",
+      "scroll": true,
+      "gap": 14,
+      "children": [
+        {
+          "type": "list",
+          "items": "{stories}",
+          "max": 30,
+          "gap": 14,
+          "item": {
+            "type": "column",
+            "gap": 2,
+            "tap": {
+              "open": "{item.url}"
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "{item.title}",
+                "style": "body",
+                "lines": 3
+              },
+              {
+                "type": "text",
+                "text": "{item.points} points \u00b7 {item.comments} comments \u00b7 {item.author}",
+                "style": "caption"
+              }
+            ]
+          }
+        },
+        {
+          "type": "button",
+          "text": "Refresh",
+          "action": {
+            "refresh": true
+          }
+        },
+        {
+          "type": "text",
+          "text": "{error}",
+          "if": "{error}",
+          "style": "caption",
+          "color": "error"
+        }
+      ]
+    }
+  }
+}

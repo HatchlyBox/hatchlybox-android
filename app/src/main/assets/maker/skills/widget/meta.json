@@ -1,0 +1,6 @@
+{
+  "title": "widget",
+  "blurb": "a home-screen widget that shows the app's data at a glance and opens it on a tap",
+  "libs": ["glance"],
+  "ideas": ["a habit tracker with a widget showing today's streak", "a countdown to my next holiday, as a home-screen widget"]
+}

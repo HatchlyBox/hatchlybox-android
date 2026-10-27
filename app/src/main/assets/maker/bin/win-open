@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# win-open <folder>: shows a folder in Windows' Explorer, from WSL (Hatchlybox's Show folder on Windows).
+exec explorer.exe "$(wslpath -w "$1")"

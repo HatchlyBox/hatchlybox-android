@@ -1,0 +1,434 @@
+# Core mechanics: what the player's hands actually do
+
+One mechanic per line, `[family] name: what you do (reference)`. References are for study, never to copy.
+Draw seeds at random instead of reading from the top: `shuf -n 15 mechanics.md | grep '^- \['`.
+A concept = a core verb + a twist (a second mechanic, a constraint or a strange setting) + a structure
+(levels, runs, a campaign, endless, a daily puzzle). The best ones cross families: a rhythm game that is
+also a city builder, a word game that is also a dungeon crawl.
+
+## Movement and traversal
+- [movement] One-touch runner: tap to jump over what comes, the world scrolls (Canabalt)
+- [movement] Lane switcher: swipe between three lanes to dodge and collect (Subway Surfers)
+- [movement] Grapple swing: hold to hook a point, release to fling with momentum (Swing Copters, Rope'n'Fly)
+- [movement] Wall jump climb: bounce between walls upward, timing each kick (Downwell inverted, Leap Day)
+- [movement] Momentum slopes: press to dive on downhills, release to fly off crests (Tiny Wings)
+- [movement] Gravity flip: tap to swap gravity, walk on ceilings (VVVVVV)
+- [movement] Dash-only movement: you can only move in straight dashes until you hit something (Tomb of the Mask)
+- [movement] Slingshot self: pull back and launch yourself, each shot costs something (Golf platformers, Flick Kick)
+- [movement] Rolling ball tilt: tilt the phone to roll through a maze (Labyrinth)
+- [movement] Snake growth: steer a body that grows and must not cross itself (Snake, Slither.io)
+- [movement] Path drawing: draw the route, then watch the unit follow it (Flight Control)
+- [movement] Teleport pairs: place two portals and route yourself through them (Portal)
+- [movement] Rewind-to-retry traversal: die, rewind a few seconds, try another line (Braid)
+- [movement] Auto-walker redirect: characters walk on their own, you place arrows and blocks (Lemmings)
+- [movement] Single-axis control: you only control speed, the path is fixed (Trainyard-style rails, Mini Metro trains)
+- [movement] Flight with stamina: flap to gain height, glide to save energy (Flappy, Alto's glide)
+- [movement] Parkour chain: keep a combo of moves to keep speed (Vector)
+- [movement] Ricochet: bounce off walls to reach where a straight line can't (Bounce, billiard puzzles)
+- [movement] Vehicle physics: balance throttle and lean over terrain (Hill Climb Racing)
+- [movement] Drift racing: hold to drift, release for boost on corners (Drift Hunters, Mario Kart mini-turbo)
+- [movement] Sailing with wind: trim the sail against the wind direction (Sailwind, Windbound)
+- [movement] Burrowing: dig through soil, choose where tunnels go (Dig Dug, Super Motherload)
+- [movement] Swimming currents: move with and against currents in a fluid field (Abzu, Flower)
+- [movement] Herding: move to push a flock without touching it (Flock, sheepdog games)
+- [movement] Possession hopping: jump into creatures and use their moves (Cappy in Odyssey, Ghost Trick)
+- [movement] Size change: grow or shrink to fit gaps or push things (Gish, Superliminal)
+- [movement] Shadow walking: move only inside shadows (Contrast, Shadow Tactics' light)
+- [movement] Echo navigation: dark world, tap to send a ping that briefly reveals it (Echo, Sound Shapes)
+- [movement] Rail grinding: land on rails and switch tracks (Jet Set Radio)
+- [movement] Ski line: pick a line down a mountain, carve to control speed (Alto's Adventure, Lonely Mountains)
+
+## Aim, physics and skill
+- [aim] Slingshot launch: pull, aim, release a projectile at a structure (Angry Birds)
+- [aim] Artillery duel: set angle and power against wind, take turns (Worms, Scorched Earth)
+- [aim] Pinball flippers: two buttons, a table, combos and ramps (Pinball FX, Demon's Tilt)
+- [aim] Billiards physics: cue angle and spin, plan the next ball (8 Ball Pool)
+- [aim] Mini-golf: one stroke at a time, read slopes (Golf Peaks, Golf Story)
+- [aim] Curling and sliding stones: push, sweep to adjust, take space (curling sims)
+- [aim] Cut the rope: slice ropes to swing and drop an object to a goal (Cut the Rope)
+- [aim] Stack balance: drop pieces onto a wobbling tower (Tricky Towers, Stack)
+- [aim] Fruit slicing: swipe to cut flying objects, avoid bombs (Fruit Ninja)
+- [aim] Bubble shooter: aim colored bubbles, bounce off walls, pop groups (Puzzle Bobble)
+- [aim] Brick breaker: steer a paddle, break blocks with a bouncing ball (Arkanoid, Ballz)
+- [aim] Ball multiplier: drop balls through gates that multiply them (Count Masters style, Peggle)
+- [aim] Peg bounce: one shot, watch it ricochet through pegs (Peggle)
+- [aim] Throw and catch: throw to a moving target, timing the release (paper toss, Basketball FRVR)
+- [aim] Archery with drop: aim with gravity and wind at moving targets (Bowmasters)
+- [aim] Sniper patience: find the right target in a crowd, one shot (Hitman Sniper)
+- [aim] Twin-stick shooter: one thumb moves, the other aims (Geometry Wars)
+- [aim] Bullet hell weaving: tiny hitbox through dense patterns (Touhou, Danmaku Unlimited)
+- [aim] Auto-shooter positioning: the weapon fires itself, you only move (Vampire Survivors)
+- [aim] Missile command: defend cities by intercepting at the right spot (Missile Command)
+- [aim] Lasso and pull: rope objects and drag them with physics (Rodeo Stampede)
+- [aim] Crane game: position a claw and drop it (claw machine sims)
+- [aim] Physics demolition: place explosives to bring a building down a certain way (Demolition Inc)
+- [aim] Pour and fill: tilt or tap to pour liquid to an exact line (Where's My Water)
+- [aim] Kite flying: keep a kite up against gusts with line tension (kite sims)
+- [aim] Fishing tension: cast, then manage line tension so it doesn't snap (Ridiculous Fishing, Dredge's minigame)
+- [aim] Juggling: keep several objects in the air with taps (Keepy Uppy)
+- [aim] Bowling curve: swipe with a curve, read the oil (bowling games)
+- [aim] Darts: steady a shaking aim and throw (darts games)
+- [aim] Flick football: flick to shoot past a keeper with curve (Flick Kick Football)
+
+## Timing and rhythm
+- [timing] Rhythm lanes: hit notes as they reach a line (Guitar Hero, Cytus)
+- [timing] Rhythm combat: actions only work on the beat (Crypt of the NecroDancer, Hi-Fi Rush)
+- [timing] One-button timing: press when the moving thing aligns (Stack, Timberman)
+- [timing] Charge and release: hold to charge, release at the sweet spot (golf swing meters)
+- [timing] Parry window: block at the last moment to counter (Sekiro, Punch-Out)
+- [timing] Traffic crossing: wait for gaps, cross lanes (Frogger, Crossy Road)
+- [timing] Conducting: keep tempo with swipes to steer an orchestra (Rhythm Heaven minigames)
+- [timing] Cooking timers: many things cooking, pull each at the right time (Overcooked, Cook Serve Delicious)
+- [timing] Musical building: placing things adds notes to a looping song (Loop Hero's music, Patapon)
+- [timing] Breathing pacing: inhale/exhale holds tied to the game (meditation games, Pacing)
+- [timing] Tempo runner: obstacles land on the beat of the music (Geometry Dash)
+- [timing] Rhythm puzzle: solve a puzzle where each move must be on the beat (Cadence of Hyrule)
+- [timing] Dance input: trace shapes at the right moments (Just Dance gestures)
+- [timing] Metronome stealth: guards move on a fixed tick, you plan moves between (Hitman GO)
+- [timing] Drumming call-and-response: repeat the pattern you hear (Patapon, Simon)
+- [timing] Rhythm crafting: hammer, fold, quench on cues to forge items (blacksmith minigames)
+
+## Placement and building
+- [placement] Tower defense: place towers along a path before waves (Kingdom Rush)
+- [placement] Maze defense: build the path itself with towers (Desktop TD, Defense Grid)
+- [placement] City builder zones: place districts, roads and services (SimCity, Townscaper)
+- [placement] Adjacency scoring: tiles score from neighbours (Islanders, Dorfromantik)
+- [placement] Tile laying landscape: draw a tile, fit it to grow a world (Carcassonne, Dorfromantik)
+- [placement] Conveyor factory: route belts, machines turn inputs into outputs (Factorio, Shapez)
+- [placement] Bridge building: build a structure under a budget and watch it load (Poly Bridge)
+- [placement] Track laying: lay rails before the train arrives (Railroad Ink, Unrailed)
+- [placement] Network lines: connect stations with limited lines as demand grows (Mini Metro)
+- [placement] Pipe routing: rotate or place pipes so flow reaches the end (Pipe Mania)
+- [placement] Garden layout: plant so plants help their neighbours, seasons change it (Garden Galaxy, Viridi)
+- [placement] Furniture tetris: fit items into a room or a bag (Unpacking, Backpack Hero)
+- [placement] Inventory packing: arrange odd-shaped items in a grid for bonuses (Backpack Battles)
+- [placement] Base layout defense: build walls and traps, then raiders come (Clash of Clans, They Are Billions)
+- [placement] Ecosystem building: add species, keep the food web balanced (Eco, Equilinox)
+- [placement] Terraforming: raise and lower land, guide water (From Dust, Populous)
+- [placement] Light and mirror placing: place mirrors to route a beam (Laser puzzles, Lasergrid)
+- [placement] Domino chain: place pieces so one push sets off a chain (Crazy Machines)
+- [placement] Contraption building: combine parts into a machine that solves a goal (Incredible Machine)
+- [placement] Spaceship layout: place rooms and crew, then survive events (FTL, Cosmoteer)
+- [placement] Zoo or park layout: paths, attractions and guest flow (Planet Coaster, Two Point)
+- [placement] Room escape layout: rearrange a room so a character can escape (Lara Croft GO style)
+- [placement] Constellation drawing: connect points to make shapes that score (constellation puzzles)
+- [placement] Wall drawing defense: draw lines that become walls for a few seconds (Draw defense games)
+- [placement] Colony assignment: place workers on tiles each season (worker placement, Stardew's farm)
+- [placement] Flow field: paint arrows on a grid to steer swarms (Swarm games, Pikmin lite)
+- [placement] Settlement on a raft or a walker: build on something that moves (Raft, Airborne Kingdom)
+- [placement] Diorama decorating: place objects to make a scene, scored by mood (Townscaper, Unpacking)
+
+## Spatial puzzles
+- [spatial] Sliding blocks: slide pieces to free one (Rush Hour, Unblock Me)
+- [spatial] Sokoban: push crates onto targets, never pull (Sokoban, Baba Is You's ancestor)
+- [spatial] Rotation puzzle: rotate tiles to connect a picture or a circuit (Loop, Infinity Loop)
+- [spatial] Folding paper: fold a sheet to align shapes (Paperama, Fold)
+- [spatial] Perspective puzzle: rotate the camera so impossible paths connect (Monument Valley, Fez)
+- [spatial] Shadow puzzle: rotate an object until its shadow matches (Shadowmatic)
+- [spatial] Cube rolling: roll a die or cube across a board, faces matter (Bloxorz, Edge)
+- [spatial] Gravity tilt puzzle: rotate the level, everything falls (Tilt mazes, Kirby tilt)
+- [spatial] Unknotting: untangle lines so none cross (Untangle, Planarity)
+- [spatial] Jigsaw with a twist: pieces rotate, flip or move by themselves (Jigsaw puzzles)
+- [spatial] Tangram: fill a silhouette with fixed shapes (Tangram)
+- [spatial] Mirror symmetry: what you do on one side happens on the other (mirror puzzles)
+- [spatial] Clones puzzle: several characters move together with one input (Tiny Bubbles, Clones)
+- [spatial] Recursive rooms: boxes contain levels that contain boxes (Patrick's Parabox)
+- [spatial] Laser and prism: split and colour beams to hit targets (Prism puzzles)
+- [spatial] Isometric pushing: stack and push in 3D with gravity (Stephen's Sausage Roll)
+- [spatial] Map folding: the map itself folds to connect places (Carto)
+- [spatial] Ice sliding: you slide until you hit something (Pokémon ice puzzles)
+- [spatial] Water level puzzle: raise and lower water to float things (Spirit of the North)
+- [spatial] Block falling: rotate falling pieces to clear lines (Tetris)
+- [spatial] Area filling: draw lines to claim area without being touched (Qix, Xonix)
+- [spatial] Paint the floor: cover every tile in one path (Line, One Stroke)
+- [spatial] Magnet puzzles: attract and repel metal pieces (Magnet puzzles)
+- [spatial] Time-loop room: the room resets, your past self repeats your moves (Cursor*10, The Bridge)
+- [spatial] Pixel picture logic: fill cells by row and column clues (Picross, Nonograms)
+- [spatial] Layered transparency: stack transparent cards to make a picture (layer puzzles)
+
+## Matching and sets
+- [match] Match-3 swap: swap neighbours to make lines of three (Bejeweled)
+- [match] Merge: combine two equal items into a higher one (2048, Merge Mansion)
+- [match] Collapse groups: tap a group of same colour to pop it (SameGame, Toon Blast)
+- [match] Mahjong solitaire: pair free tiles from a stack (Mahjong Solitaire)
+- [match] Memory pairs: flip cards, remember positions (Concentration)
+- [match] Sorting: sort colours into tubes or shelves (Ball Sort, Water Sort)
+- [match] Spot the difference: find what changed between two pictures
+- [match] Hidden object: find listed items in a dense scene (Hidden Folks)
+- [match] Triple tiles: collect three equal tiles into a tray before it fills (Tile Master)
+- [match] Set finding: find three cards where each feature is all same or all different (SET)
+- [match] Chain linking: drag through adjacent same items for a chain (Dots, Two Dots)
+- [match] Puzzle combat: matching powers attacks against an enemy (Puzzle Quest)
+- [match] Colour mixing: mix primaries to match a target colour (Blendoku, I Love Hue)
+- [match] Gradient order: put shuffled tiles in hue order (I Love Hue)
+- [match] Pattern copy: recreate a shown pattern from memory (Simon, memory grids)
+- [match] Odd one out: find the one item that breaks the pattern
+- [match] Shape sorting by rule: guess the hidden rule from examples (Zendo, Eleusis)
+
+## Words and language
+- [words] Word guess with feedback: guess a word, get letter hints (Wordle)
+- [words] Letter grid search: drag through adjacent letters to form words (Boggle, Wordscapes)
+- [words] Crossword building: place letter tiles for score (Scrabble, Words with Friends)
+- [words] Typing combat: type words to attack or cast (Typing of the Dead, Epistory)
+- [words] Anagram: rearrange letters into words (Text Twist)
+- [words] Spelling as magic: spells are words you build, letters are resources (Bookworm Adventures, Spellbound)
+- [words] Translation discovery: decode an invented language from context (Chants of Sennaar, Heaven's Vault)
+- [words] Word association chain: link words by meaning to reach a target (Contexto, chain games)
+- [words] Riddles: answer riddles to open doors (riddle games)
+- [words] Sentence building: build sentences from fragments to persuade (Elsinore, Disco Elysium checks)
+- [words] Cipher breaking: substitute letters to reveal a message (cryptograms)
+- [words] Rules as words: push word blocks to change the rules (Baba Is You)
+- [words] Poetry making: choose words to fit rhyme and metre, characters react (Wandersong, poetry duels)
+- [words] Name guessing from clues: one clue per round, fewer clues score more
+- [words] Letter rain: catch falling letters to complete a word
+
+## Numbers and logic
+- [logic] Sudoku-like constraints: fill a grid so rows, columns and regions hold rules (Sudoku, Killer Sudoku)
+- [logic] Minesweeper deduction: numbers tell how many hazards are near (Minesweeper, Hexcells)
+- [logic] Logic grid: deduce who has what from statements (Einstein puzzles)
+- [logic] Arithmetic target: combine numbers to hit a target (Countdown, 24)
+- [logic] Number merge on a board: slide or combine numbers (Threes, 2048)
+- [logic] Programming puzzles: write instructions for a robot (Human Resource Machine, Lightbot)
+- [logic] Circuit logic: wire gates to produce the right outputs (Turing Complete, Logic World)
+- [logic] Nonogram and Picross: (see spatial) fill by clues
+- [logic] Slitherlink and loops: draw one loop that fits numbers (Nikoli puzzles)
+- [logic] Path cost: find the cheapest route through a weighted grid
+- [logic] Balance scales: balance weights to find the odd one (balance puzzles)
+- [logic] Code cracking: guess a code from right-place and right-colour hints (Mastermind)
+- [logic] Knights and knaves: some speak truth, some lie, find out who (Return of the Obra Dinn feel)
+- [logic] Probability bets: estimate odds and bet resources (push-your-luck)
+- [logic] Automaton rules: set cellular automaton rules to grow a target pattern (Life-like puzzles)
+- [logic] Train switching: set switches so trains reach the right stations (Trainyard)
+- [logic] Gear trains: place gears so the last one turns the right way and speed (gear puzzles)
+- [logic] Tower of Hanoi family: move stacks under ordering rules
+
+## Cards, dice and drafting
+- [cards] Deckbuilder combat: draw a hand, play cards for energy, add cards after fights (Slay the Spire)
+- [cards] Solitaire variants: build sequences from a layout (Klondike, Spider, Balatro-poker)
+- [cards] Poker hands as scoring: build hands for multipliers (Balatro)
+- [cards] Dice placement: roll dice, assign them to slots (Dicey Dungeons)
+- [cards] Dice drafting: take dice from a shared pool to fill a board (Sagrada)
+- [cards] Card drafting: pick one, pass the rest (7 Wonders, Sushi Go)
+- [cards] Trick taking: follow suit, win tricks (Hearts, Spades)
+- [cards] Card grid dungeon: walk a grid of face-down cards (Card Crawl, Card Hog)
+- [cards] Tarot reading story: draw cards that build a narrative (Cultist Simulator, Arcana)
+- [cards] Push your luck: keep drawing for more, bust and lose all (Blackjack, Can't Stop)
+- [cards] Swipe choices: swipe left or right on events, balance four meters (Reigns)
+- [cards] Card battler lanes: play creatures into lanes facing the enemy (Inscryption, Marvel Snap)
+- [cards] Rummy melding: form sets and runs to empty your hand (Rummikub)
+- [cards] Bag building: draw tokens from a bag you improve (Quacks of Quedlinburg)
+- [cards] Slot reels with choices: build your own slot machine of symbols (Luck be a Landlord)
+- [cards] Dice combat with rerolls: reroll to build combos (Dice Throne, Yahtzee)
+- [cards] Auction bidding: bid limited money for items others want too
+- [cards] Hand management timing: cards double as resources and actions (Race for the Galaxy)
+
+## Strategy and tactics
+- [strategy] Turn-based tactics grid: move squads, cover and flanks (XCOM, Into the Breach)
+- [strategy] Telegraphed enemy moves: see what enemies will do, push them into each other (Into the Breach)
+- [strategy] Real-time strategy lite: gather, build, attack with few unit types (Warcraft, Northgard)
+- [strategy] Send-the-troops nodes: drag units from your base to others (Galcon, State.io): the obvious answer, avoid by default
+- [strategy] Lane pushing: units walk lanes automatically, you choose what to spawn (Clash Royale)
+- [strategy] Territory painting: claim area by moving over it (Paper.io, Splatoon)
+- [strategy] 4X lite: explore, expand, exploit, exterminate on a small map (Polytopia)
+- [strategy] Hex area control: place influence, majorities score (El Grande, Hex games)
+- [strategy] Formation command: set formations and stances, battles resolve with physics (Total War lite, TABS)
+- [strategy] Auto-battler: buy and position units, combat plays itself (Teamfight Tactics, Super Auto Pets)
+- [strategy] Chess variant: chess-like pieces with new moves or boards (Shotgun King, Pawnbarian)
+- [strategy] Go-like encirclement: surround to capture territory (Go)
+- [strategy] Wargame supply lines: units need supply, cutting lines wins (Unity of Command)
+- [strategy] Diplomacy and betrayal: alliances and simultaneous orders (Diplomacy)
+- [strategy] Asymmetric sides: one side has armies, the other spies or terrain (Root, Vast)
+- [strategy] Siege engineering: build trebuchets and walls, physics battles (Medieval Engineers, Besiege)
+- [strategy] Commander only: you control one hero, armies follow your banner (Mount & Blade, Kingdom)
+- [strategy] Indirect rule: you set laws and priorities, citizens act (Frostpunk, Banished)
+- [strategy] Weather and season war: battles shaped by snow, floods, harvests
+- [strategy] Morale battles: units break and rout, fear spreads (Field of Glory)
+- [strategy] Orders by drawing: draw arrows on the map for each unit, then a turn runs (Frozen Synapse)
+- [strategy] Simultaneous turns: everyone plans, then all moves resolve together (Frozen Synapse, Diplomacy)
+- [strategy] Tug-of-war: one line of power that both sides push (tug-of-war games)
+- [strategy] Underground logistics: you only see tunnels and rumors (Dungeon Keeper)
+- [strategy] Rebellion growth: spread an idea through a map, the empire reacts (Plague Inc, Liberation)
+- [strategy] Plague spread: evolve a contagion to reach everyone (Plague Inc)
+- [strategy] Domino territory: claiming one tile triggers neighbours (Hexxagon, Ataxx)
+- [strategy] Trade empire: buy low, sell high across ports with risks (Patrician, Port Royale)
+- [strategy] Caravan routes: plan routes and escorts through dangers (Caravan, Banner Saga travel)
+- [strategy] Spymaster: place agents, gather intel, choose when to act (Invisible Inc, Phantom Doctrine)
+
+## Combat and action
+- [combat] Hack and slash combos: light, heavy, dodge, chain combos (Devil May Cry lite)
+- [combat] Swipe-direction fighting: swipe the direction of the opening (Infinity Blade)
+- [combat] Stance switching: high, middle, low stances counter each other (Bushido Blade, For Honor)
+- [combat] Lock-on duels: stamina, dodge rolls, readable telegraphs (Dark Souls)
+- [combat] Brawler crowd: fight many weak enemies, crowd control (Streets of Rage)
+- [combat] Boss rush: only bosses, each a pattern to learn (Cuphead, Titan Souls)
+- [combat] One-hit kills both ways: tense, instant duels (Hotline Miami, Samurai Gunn)
+- [combat] Elemental combos: mix elements on enemies for reactions (Magicka, Genshin)
+- [combat] Spell drawing: draw glyphs to cast (Black & White, Magic Touch)
+- [combat] Weapon throwing and recalling: throw, then pull back (Kratos' axe)
+- [combat] Momentum melee: speed equals damage (Katana Zero dash)
+- [combat] Body-swap combat: switch between party members mid-fight (Trine)
+- [combat] Pet commanding: you fight through a creature you direct (Pikmin, Pokémon)
+- [combat] Mech parts: build a mech from parts that break off (Armored Core lite)
+- [combat] Zone control combat: lay down areas that hurt or slow (MOBA abilities)
+- [combat] Turn-based timeline: speed decides turn order on a visible timeline (Final Fantasy X)
+- [combat] Active time battle: gauges fill, act when ready (classic JRPG)
+- [combat] Positioning RPG: each slot in a row has abilities (Darkest Dungeon)
+- [combat] Push and knockback: damage comes from walls and hazards (Into the Breach, Pushers)
+- [combat] Counter-only: you never attack, only redirect (Aikido sims)
+- [combat] Ship broadsides: turn to face, fire sides, manage sails (Sid Meier's Pirates)
+- [combat] Dogfight: turning circles, energy and lead aim (Luftrausers)
+- [combat] Tank tread aiming: hull and turret move separately (Wii Tanks)
+- [combat] Horde survival: survive waves, choose upgrades on level-up (Vampire Survivors, Brotato)
+- [combat] Shoot 'em up with absorbing: absorb bullets of your colour (Ikaruga)
+- [combat] Grapple combat: pull enemies into hazards (Bionic Commando)
+- [combat] Sumo push: push others out of a ring (sumo games, Party Animals)
+
+## Stealth, perception and investigation
+- [stealth] Vision cones: avoid guard sight cones, time movement (Mark of the Ninja, Commandos)
+- [stealth] Sound stealth: noise spreads as rings, guards investigate (Thief)
+- [stealth] Disguise: blend by matching the crowd (Hitman)
+- [stealth] Heist planning: plan, then execute, improvise when it breaks (Monaco, Payday)
+- [stealth] Hide in plain sight: act like an NPC among NPCs (Spy Party, Hidden in Plain Sight)
+- [investigate] Deduction board: link clues on a board to form theories (Return of the Obra Dinn, Shadows of Doubt)
+- [investigate] Photo investigation: take photos, notice details, they become evidence (Pokemon Snap, Fatal Frame)
+- [investigate] Interrogation: catch contradictions in testimony (Phoenix Wright, LA Noire)
+- [investigate] Document checking: compare papers against rules (Papers, Please)
+- [investigate] Archive search: search a database of clips by keywords (Her Story, Telling Lies)
+- [investigate] Sound analysis: listen and isolate sounds to locate events (sound detective)
+- [investigate] Map triangulation: plot signals or sightings to find a source
+- [investigate] Time-of-death scene: reconstruct what happened from frozen scenes (Obra Dinn, Lucas Pope)
+- [investigate] Signal decoding: tune frequencies, decode transmissions (Signalis radio, Duskers)
+- [perception] Peripheral attention: watch many cameras, react to anomalies (I'm on Observation Duty)
+- [perception] Anomaly spotting: walk the same corridor, notice what changed (Exit 8)
+- [perception] Night shift monitoring: limited power, check cameras (Five Nights at Freddy's)
+
+## Management, simulation and economy
+- [manage] Shop keeping: buy stock, set prices, read customers (Moonlighter, Recettear)
+- [manage] Restaurant rush: take orders, cook, serve before patience runs out (Diner Dash)
+- [manage] Farm seasons: plant, water, harvest, weather and calendar (Stardew Valley)
+- [manage] Potion brewing: combine ingredients by properties to fulfil orders (Potion Craft)
+- [manage] Hospital or school triage: assign staff to cases with limited time (Two Point Hospital)
+- [manage] Spaceship crew: assign crew to stations during crises (FTL)
+- [manage] Lighthouse or outpost: one place, keep it running through nights (Lighthouse keeper sims)
+- [manage] Caravan survival: food, morale, choices on the road (Oregon Trail)
+- [manage] Expedition with attrition: push deeper as resources drain (Darkest Dungeon, Sunless Sea)
+- [manage] Dungeon keeper: build a dungeon that heroes raid (Dungeon Keeper, Legend of Keepers)
+- [manage] Monster breeding: breed traits to raise champions (Monster Rancher, Slime Rancher)
+- [manage] Aquarium or terrarium: balance a living tank (aquarium sims)
+- [manage] Delivery routes: plan routes and loads (Mini Motorways, Euro Truck lite)
+- [manage] Air traffic: sequence landings safely (Flight Control, Airport Madness)
+- [manage] Emergency dispatch: send the right unit to calls on a city map (911 Operator)
+- [manage] Bakery timing and orders: oven slots, recipes, deadlines
+- [manage] Tea or coffee crafting: craft drinks for customers who tell stories (Coffee Talk)
+- [manage] Sorting office: route mail by rules that change (Papers Please-like)
+- [manage] Repair bench: diagnose and fix objects part by part (Assemble with Care, PC Building Sim)
+- [manage] Cleaning and restoring: wash, scrape, restore satisfyingly (PowerWash Simulator)
+- [manage] Population sim: citizens with needs, you shape incentives (Tropico)
+- [manage] Stock market: trade on news with risk (stock sims)
+- [manage] Idle incremental: numbers grow, buy upgrades that multiply, prestige (Cookie Clicker, Universal Paperclips)
+- [manage] Clicker with active skills: tapping plus timed abilities (Tap Titans)
+- [manage] Generation management: each run is a generation, traits inherit (Rogue Legacy, Crusader Kings lite)
+- [manage] Tribe or village survival: winter is coming, gather and ration (Frostpunk)
+- [manage] Ecology balance: predator and prey populations oscillate, you nudge (SimEarth lite)
+- [manage] Ant colony: lay pheromone trails, the colony follows (SimAnt)
+- [manage] Bees and pollination: guide bees between flowers, grow the meadow
+- [manage] Railway timetable: schedule trains on shared tracks
+- [manage] Theatre or band manager: book shows, pick setlists, manage morale
+
+## Roguelike and structure
+- [structure] Roguelite runs: short runs, permanent unlocks between (Hades, Dead Cells)
+- [structure] Branching map: choose a path of nodes, each an encounter type (Slay the Spire map)
+- [structure] Loop builder: the hero loops a road, you place tiles that add enemies and rewards (Loop Hero)
+- [structure] Daily seed: one shared puzzle or run per day (Wordle, Spelunky daily)
+- [structure] Time-loop day: the same day repeats, knowledge carries over (Outer Wilds, Majora's Mask)
+- [structure] Descent: go deeper, each level harder, return or press on (Diablo, Dredge)
+- [structure] Ascension levels: beat it, then play again with a new rule each time
+- [structure] Metroidvania gating: abilities open earlier places (Hollow Knight)
+- [structure] Hub and expeditions: return to a home that grows with what you bring (Hades' house)
+- [structure] Endless with milestones: scoring run with checkpoints (Alto's, Jetpack Joyride)
+- [structure] Levels as rule changes: each level adds one new rule (Baba Is You, Snakebird)
+- [structure] Episodic chapters: short self-contained chapters with a long arc
+- [structure] Seasons in-game: the world changes every few days of play
+- [structure] Survivor's upgrade draft: pick one of three upgrades at each level-up
+- [structure] Gauntlet with lives: a fixed number of lives for a whole set of levels
+- [structure] Speedrun ghosts: race your own previous best as a ghost
+
+## Narrative, choice and social
+- [narrative] Dialogue choices with memory: characters remember (Telltale, Oxenfree)
+- [narrative] Branching story paths with a map of branches you can revisit (Detroit flowchart)
+- [narrative] Relationship meters: choices shift trust between characters (dating sims, Persona links)
+- [narrative] Visual novel with stats: story plus training stats that open routes
+- [narrative] Letter or text conversation: talk through a phone interface (Lifeline, Simulacra)
+- [narrative] Diary-driven exploration: read entries that point to places (Gone Home)
+- [narrative] Moral weight: no right answer, consequences show later (This War of Mine)
+- [narrative] Faction reputation: who you help changes who helps you (Fallout factions)
+- [narrative] Courtroom: present evidence at the right moment (Ace Attorney)
+- [narrative] Negotiation: read the other side's wants, trade concessions
+- [social] Hidden roles: some players are traitors (Among Us, Werewolf), pass-and-play or AI
+- [social] Pass-and-play party: one phone, turns, quick rounds (Heads Up, Spaceteam)
+- [social] Cooperative shouting: each player sees instructions others must perform (Spaceteam)
+- [social] Bluffing: claim a value, others call your bluff (Liar's Dice, Coup)
+- [social] Drawing and guessing: draw, others guess (Pictionary, Gartic)
+- [social] Asymmetric co-op: one player has the map, the other the hands (Keep Talking and Nobody Explodes)
+- [social] Async messages: leave notes or ghosts for other players (Dark Souls messages)
+- [social] Voting: players vote on outcomes, majority rules
+
+## Exploration, discovery and creation
+- [explore] Open-world wandering: go where looks interesting, the world rewards curiosity (Breath of the Wild)
+- [explore] Fog-of-war reveal: map only appears where you've been (Civilization, Hollow Knight)
+- [explore] Cartography: draw the map yourself as you explore (Carto, Etrian Odyssey)
+- [explore] Photography: find and frame creatures or moments (Pokémon Snap, Umurangi Generation)
+- [explore] Collect-a-thon: find hidden items around a dense space (Banjo, A Short Hike)
+- [explore] Underwater or space survey: scan species or objects to fill a catalogue (Subnautica, No Man's Sky)
+- [explore] Archaeology dig: brush and excavate carefully, piece artifacts together
+- [explore] Stargazing: find constellations and events in a night sky
+- [explore] Walking with weather: the journey and the conditions are the game (Death Stranding lite)
+- [explore] Knowledge as progression: nothing unlocks except what you learn (Outer Wilds, Tunic)
+- [create] Sandbox toy: physics or elements to play with, no goal (Powder Game, Sandspiel)
+- [create] Falling sand elements: fire, water, sand, plants interact (Noita, Powder Toy)
+- [create] Music toy: make songs from shapes or creatures (Incredibox, Patatap)
+- [create] Level editor as the game: build levels, then others or AI play them (Mario Maker)
+- [create] Creature creator: design a creature that then has to survive (Spore)
+- [create] Voxel building: place blocks in 3D (Minecraft, Townscaper)
+- [create] Painting with rules: colours or brushes have behaviour (Chicory)
+- [create] Story weaving: assemble scenes to make a story others react to (Storyteller)
+- [create] Fashion or decoration with judging: style to a theme, get rated
+- [create] Pixel art making: paint pixels, then they animate or come alive
+- [create] Ecosystem toy: add plants and animals, watch them interact
+
+## Phone-native and sensor ideas
+- [phone] Tilt control: steer by tilting (accelerometer)
+- [phone] Shake to act: shake to stir, roll dice, scatter
+- [phone] Microphone: blow or sing to control (blow on the mic to sail, pitch controls height)
+- [phone] Multi-touch chords: several fingers at once as one input (pinch, three-finger spells)
+- [phone] Pinch and zoom as mechanic: zoom reveals hidden layers (Zoom puzzles, Zoomquilt)
+- [phone] Rotate the screen: portrait to landscape changes the level
+- [phone] Hold and release pressure: long press duration matters
+- [phone] Swipe trails: the length and curve of a swipe shape an action
+- [phone] Real time: the game follows real clock, day and season (Animal Crossing)
+- [phone] Location-free walking: steps counted become in-game travel (pedometer games)
+- [phone] Haptic sensing: find things by vibration patterns with eyes closed
+- [phone] Camera colour: point the camera at real colours to collect them
+- [phone] Notifications as story: the game texts you in real time (Lifeline)
+- [phone] One-thumb portrait: everything within thumb reach, played in one hand on a bus
+- [phone] Two-player same screen: each player holds one end of the phone
+
+## Twists to cross with any of the above
+- [twist] Play as the villain, the monster or the boss
+- [twist] Everything is reversed: you defend the treasure, you build the dungeon, you are the level
+- [twist] Only one input: one tap, one swipe direction, one key
+- [twist] Limited actions: three moves per level, one shot per day
+- [twist] Time pressure removed: no timer, only perfect solutions count
+- [twist] Every action has a cost in a shared resource (light, time, sanity, noise)
+- [twist] The world changes when you're not looking
+- [twist] Death is progress: each death leaves something useful behind
+- [twist] Friendly enemies: you must save or convert, not kill
+- [twist] Scale shift: the same mechanic at tiny and huge scale (microbes to galaxies)
+- [twist] Two mechanics on two halves of the screen at once
+- [twist] The rules are hidden, the player discovers them
+- [twist] The interface is diegetic: menus are objects in the world (a map table, a book)
+- [twist] The music is the level, or the level makes the music
+- [twist] You control the environment, not the character (weather, gravity, light)
+- [twist] Cooperative AI companion you must teach
+- [twist] Choices can't be undone and the game remembers them across runs
+- [twist] Opposite tone: cozy war, horror cooking, calm racing

@@ -1,0 +1,295 @@
+{
+  "name": "System",
+  "description": "This Linux at a glance: processor, memory and storage as rings, the processor's last half hour as a line, and the uptime; a tap opens the details and the busiest programs",
+  "version": 5,
+  "size": "wide",
+  "refresh": 60,
+  "data": "./data.sh",
+  "state": {
+    "cpu": 0,
+    "mem": 0,
+    "disk": 0,
+    "memText": "",
+    "diskText": "",
+    "cpuText": "",
+    "history": [],
+    "up": "",
+    "procs": []
+  },
+  "ui": {
+    "type": "column",
+    "gap": 12,
+    "children": [
+      {
+        "type": "header",
+        "text": "System",
+        "icon": "memory",
+        "trailing": "up {up}"
+      },
+      {
+        "type": "row",
+        "gap": 8,
+        "align": "center",
+        "children": [
+          {
+            "type": "meter",
+            "value": "{cpu}",
+            "label": "Processor",
+            "caption": "{cpuText}",
+            "color": "primary",
+            "size": 58,
+            "weight": 1
+          },
+          {
+            "type": "meter",
+            "value": "{mem}",
+            "label": "Memory",
+            "caption": "{memText}",
+            "color": "secondary",
+            "size": 58,
+            "weight": 1
+          },
+          {
+            "type": "meter",
+            "value": "{disk}",
+            "label": "Storage",
+            "caption": "{diskText}",
+            "color": "tertiary",
+            "size": 58,
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "type": "chart",
+        "values": "{history}",
+        "kind": "line",
+        "area": true,
+        "color": "primary",
+        "height": 72,
+        "weight": 1
+      },
+      {
+        "type": "text",
+        "text": "Linux environment \u00b7 CPU history, last 30 samples",
+        "style": "caption",
+        "color": "muted",
+        "priority": 3,
+        "lines": 1
+      }
+    ]
+  },
+  "views": [
+    {
+      "when": "tiny",
+      "title": false,
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "meter",
+            "value": "{cpu}",
+            "label": "CPU",
+            "color": "primary",
+            "size": 50
+          }
+        ],
+        "align": "center",
+        "arrange": "center"
+      }
+    },
+    {
+      "when": "tall",
+      "ui": {
+        "type": "column",
+        "children": [
+          {
+            "type": "header",
+            "text": "System",
+            "icon": "memory"
+          },
+          {
+            "type": "meter",
+            "value": "{cpu}",
+            "label": "Processor",
+            "caption": "{cpuText}",
+            "color": "primary",
+            "size": 54
+          },
+          {
+            "type": "meter",
+            "value": "{mem}",
+            "label": "Memory",
+            "caption": "{memText}",
+            "color": "secondary",
+            "size": 54
+          },
+          {
+            "type": "meter",
+            "value": "{disk}",
+            "label": "Storage",
+            "caption": "{diskText}",
+            "color": "tertiary",
+            "size": 54
+          },
+          {
+            "type": "chart",
+            "values": "{history}",
+            "kind": "line",
+            "area": true,
+            "color": "primary",
+            "height": 40,
+            "weight": 1
+          }
+        ],
+        "gap": 10,
+        "align": "center"
+      }
+    },
+    {
+      "when": "wide",
+      "maxHeight": 150,
+      "ui": {
+        "type": "row",
+        "children": [
+          {
+            "type": "meter",
+            "value": "{cpu}",
+            "label": "CPU",
+            "color": "primary",
+            "size": 48
+          },
+          {
+            "type": "meter",
+            "value": "{mem}",
+            "label": "Memory",
+            "color": "secondary",
+            "size": 48
+          },
+          {
+            "type": "meter",
+            "value": "{disk}",
+            "label": "Disk",
+            "color": "tertiary",
+            "size": 48
+          },
+          {
+            "type": "chart",
+            "values": "{history}",
+            "kind": "line",
+            "area": true,
+            "color": "primary",
+            "height": 48,
+            "weight": 1,
+            "minWidth": 300
+          }
+        ],
+        "gap": 12,
+        "align": "center"
+      }
+    }
+  ],
+  "screen": {
+    "title": "System",
+    "ui": {
+      "type": "column",
+      "scroll": true,
+      "gap": 16,
+      "children": [
+        {
+          "type": "row",
+          "gap": 8,
+          "align": "center",
+          "children": [
+            {
+              "type": "meter",
+              "value": "{cpu}",
+              "label": "Processor",
+              "caption": "{cpuText}",
+              "color": "primary",
+              "size": 84,
+              "weight": 1
+            },
+            {
+              "type": "meter",
+              "value": "{mem}",
+              "label": "Memory",
+              "caption": "{memText}",
+              "color": "secondary",
+              "size": 84,
+              "weight": 1
+            },
+            {
+              "type": "meter",
+              "value": "{disk}",
+              "label": "Storage",
+              "caption": "{diskText}",
+              "color": "tertiary",
+              "size": 84,
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "type": "header",
+          "text": "Processor, last 30 minutes",
+          "icon": "chart",
+          "trailing": "up {up}"
+        },
+        {
+          "type": "chart",
+          "values": "{history}",
+          "kind": "line",
+          "area": true,
+          "color": "primary",
+          "height": 140
+        },
+        {
+          "type": "header",
+          "text": "Busiest programs",
+          "icon": "speed"
+        },
+        {
+          "type": "list",
+          "items": "{procs}",
+          "max": 10,
+          "gap": 8,
+          "item": {
+            "type": "row",
+            "gap": 8,
+            "align": "center",
+            "children": [
+              {
+                "type": "text",
+                "text": "{item.name}",
+                "style": "body",
+                "font": "mono",
+                "lines": 1,
+                "weight": 1
+              },
+              {
+                "type": "text",
+                "text": "{item.cpu}% cpu",
+                "style": "caption",
+                "width": 72
+              },
+              {
+                "type": "text",
+                "text": "{item.mem}% mem",
+                "style": "caption",
+                "width": 72
+              }
+            ]
+          }
+        },
+        {
+          "type": "button",
+          "text": "Refresh",
+          "action": {
+            "refresh": true
+          }
+        }
+      ]
+    }
+  }
+}

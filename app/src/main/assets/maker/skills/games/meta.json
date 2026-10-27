@@ -1,0 +1,6 @@
+{
+  "title": "games",
+  "blurb": "games and drawn graphics: a game loop, taps and drags, a score and a best score",
+  "libs": ["canvas", "gestures"],
+  "ideas": ["a reaction-time game with a best score", "a snake game with swipe controls"]
+}

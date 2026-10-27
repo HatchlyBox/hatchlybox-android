@@ -1,0 +1,362 @@
+#!/usr/bin/env bash
+# visual: the Visual Intelligence tools for agents (the `visual` skill). Knowledge, rendering, evaluation.
+#   visual find <words>             techniques and principles that fit, best first (knowledge base + learned)
+#   visual show <id>                one entry in full
+#   visual list [principles|recipes|adapters|learned]
+#   visual device                   the device it runs on, and the budgets to design for (phones and computers)
+#   visual plan                     design/visual-plan.md to fill before making anything (kept if it exists)
+#   visual render [options]         run the Godot project without a screen and save screenshots + stats
+#       --at 1,3,6                  seconds to capture at (default 1,3)
+#       --tap X,Y@T[;X,Y@T...]      touches to send, in viewport pixels, at T seconds
+#       --scene res://x.tscn        a scene other than the main one
+#       --size 720x1280             window size (default: the project's viewport)
+#       --for android|web|linux|macos|windows   the version to judge: phones and the web render with Compatibility,
+#                                   computers with Forward+ (default: android)
+#   visual check <png>... [--style pixel|flat|painted|realistic|ui] [--against old.png]
+#                                   measurements and warnings for each image, plus a small contact sheet
+#   visual learn <name>             design/learned/<name>.md, a recipe to fill with what worked here
+#   visual setup                    install the renderer (Xvfb + software OpenGL) if it's missing (on a computer it
+#                                   says what to install when that needs an administrator; a Mac needs nothing)
+set -uo pipefail
+_self=${BASH_SOURCE[0]}; while [ -L "$_self" ]; do _l=$(readlink "$_self"); case $_l in /*) _self=$_l ;; *) _self=$(dirname "$_self")/$_l ;; esac; done
+# The engine is two folders up (DATA/visual/bin/visual); its paths.sh says where everything is.
+source "$(dirname "$_self")/../../bin/paths.sh"
+D=$DATA
+V=$D/visual
+KB=$V/kb
+LEARNED=$D/visual-learned
+die() { echo "visual: $*" >&2; exit 1; }
+# Where it runs: the phone (Hatchlybox) or a computer (platform.env's HOST).
+HOST=linux; [ -f "$D/platform.env" ] && . "$D/platform.env"
+phone() { [ "$HOST" = hatchlybox ]; }
+mac() { [ "${HATCHLYBOX_TEST_OS:-$(uname -s)}" = Darwin ]; }
+mem_gb() { if [ -r /proc/meminfo ]; then awk '/MemTotal/ {printf "%.1f", $2 / 1048576}' /proc/meminfo; else awk -v b="$(sysctl -n hw.memsize 2>/dev/null || echo 0)" 'BEGIN {printf "%.1f", b / 1073741824}'; fi; }
+cores() { getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2; }
+
+# The project's Godot folder: ./godot, or here if this is one.
+project() { if [ -f godot/project.godot ]; then echo "$PWD/godot"; elif [ -f project.godot ]; then echo "$PWD"; else return 1; fi; }
+meta() { sed -n "s/^$2: *//p" "$1" | head -1; }
+
+entries() {
+  local f
+  for f in "$KB"/*/*.md "$LEARNED"/*/*.md; do [ -f "$f" ] && echo "$f"; done
+}
+
+cmd_find() {
+  [ $# -gt 0 ] || die "find what? e.g. visual find water reflections pixel"
+  local f words; words=$(tr '[:upper:]' '[:lower:]' <<< "$*")
+  entries | while read -r f; do
+    # Title and tags weigh more than the body.
+    awk -v words="$words" -v file="$f" '
+      BEGIN { n = split(words, w, /[^a-z0-9+#-]+/) }
+      { l = tolower($0); weight = (NR < 12 && ($0 ~ /^(title|tags|styles|summary):/)) ? 5 : 1
+        for (i = 1; i <= n; i++) if (length(w[i]) > 1) { c = gsub(w[i], "", l); if (c) { s += c * weight; hit[i] = 1 } } }
+      END { for (i in hit) h++; if (s > 0) printf "%d\t%s\n", s * (h + 1), file }' "$f"
+  done | sort -rn | head -8 | while IFS=$'\t' read -r _ f; do
+    printf '%-34s %s\n' "$(id_of "$f")" "$(meta "$f" title) — $(meta "$f" summary)"
+  done
+}
+id_of() { local f=$1 k; k=${f%/*}; k=${k##*/}; [[ $f == "$LEARNED"/* ]] && k=learned/$k; echo "$k/$(basename "$f" .md)"; }
+
+cmd_show() {
+  local id=${1:-}; [ -n "$id" ] || die "show which? (ids from visual find)"
+  local f=$KB/$id.md
+  [[ $id == learned/* ]] && f=$LEARNED/${id#learned/}.md
+  [ -f "$f" ] || f=$(entries | grep -m1 "/${id##*/}\.md$")
+  [ -f "$f" ] || die "no entry $id"
+  cat "$f"
+}
+
+cmd_list() {
+  local f
+  entries | while read -r f; do
+    case "${1:-}" in "") ;; learned) [[ $f == "$LEARNED"/* ]] || continue ;; *) [[ $f == "$KB/$1/"* ]] || continue ;; esac
+    printf '%-34s %s\n' "$(id_of "$f")" "$(meta "$f" title)"
+  done
+}
+
+# phone_budgets <tier>: per-frame budgets at 60 fps on a phone of that tier.
+phone_budgets() {
+  case $1 in
+    high) echo "  2D: ≤ 400 draw calls, ≤ 20k visible sprites via MultiMesh, 4–8 Light2D, ≤ 3 full-screen shader passes
+  3D: ≤ 250 draw calls, ≤ 300k triangles visible, 1 directional + ≤ 8 omni lights, shadows on 1 light
+  textures: ≤ 256 MB video memory, 2048 px atlases, ETC2/ASTC compression on" ;;
+    mid) echo "  2D: ≤ 200 draw calls, ≤ 8k sprites via MultiMesh, 2–4 Light2D, ≤ 2 full-screen shader passes
+  3D: ≤ 150 draw calls, ≤ 150k triangles, 1 directional + ≤ 4 omni lights, baked or blob shadows
+  textures: ≤ 160 MB video memory, 2048 px atlases" ;;
+    low) echo "  2D: ≤ 100 draw calls, ≤ 3k sprites, ≤ 1 Light2D (prefer baked light), 1 full-screen pass
+  3D: avoid; if needed ≤ 60 draw calls, ≤ 50k triangles, unshaded/vertex-colour materials
+  textures: ≤ 96 MB video memory, 1024 px atlases" ;;
+  esac
+}
+
+# phone_info: the phone's model and screen as Hatchlybox described them (device.json), else unknown.
+phone_info() {
+  model=unknown screen=unknown
+  if [ -f "$D/device.json" ]; then
+    model=$(jq -r '"\(.model // "?") (\(.soc // "?"), GPU \(.gpu // "?"))"' "$D/device.json")
+    screen=$(jq -r '"\(.width // "?")x\(.height // "?") px, \(.dpi // "?") dpi, \(.hz // 60) Hz"' "$D/device.json")
+  fi
+}
+
+# computer_gpu: the graphics chip, in words.
+computer_gpu() {
+  local g=""
+  if mac; then g=$(system_profiler SPDisplaysDataType 2>/dev/null | awk -F': ' '/Chipset Model/ {print $2; exit}')
+  elif command -v lspci >/dev/null 2>&1; then g=$(lspci 2>/dev/null | grep -iE 'vga|3d|display' | head -1 | sed 's/^[^:]*: //')
+  fi
+  [ -n "$g" ] || [ ! -d /usr/lib/wsl ] || g="Windows' GPU through WSL"
+  echo "${g:-unknown}"
+}
+
+computer_device() {
+  local os
+  if mac; then os="macOS $(sw_vers -productVersion 2>/dev/null)"; else os=$(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-Linux}"); fi
+  phone_info
+  echo "computer: $os, $(cores) cores, $(mem_gb) GB, GPU: $(computer_gpu)"
+  if mac; then echo "renders here: this Mac's own GPU (a small window shows while it renders)"
+  else echo "renders here: software (Xvfb + llvmpipe, lavapipe for Vulkan): fps is not real; draw calls, objects and memory are"; fi
+  echo
+  if [ "$model" = unknown ]; then echo "the Android version (visual render) is judged as on a phone: a mid-range phone (none described)"
+  else echo "the Android version (visual render) is judged as on the phone: $model, $screen"; fi
+  echo "  renderer: Godot gl_compatibility (OpenGL ES 3); budgets per frame at 60 fps:"
+  phone_budgets mid
+  cat <<'TXT'
+
+computer versions (visual render --for linux|macos|windows) use Forward+ (Vulkan, Metal or Direct3D 12).
+  Design for integrated graphics (Intel Iris Xe, AMD Radeon 780M, Apple M1) at 1080p and 60 fps:
+  2D: ≤ 2000 draw calls, ≤ 100k sprites via MultiMesh, ≤ 16 Light2D with shadows, post-processing welcome
+  3D: ≤ 1500 draw calls, ≤ 2M triangles visible, 1 directional + ≤ 32 omni/spot lights, shadows on ≤ 4
+  effects: SSAO, glow and volumetric fog are fine; SDFGI and SSR only behind a quality setting
+  textures: ≤ 1.5 GB video memory, 4096 px atlases, VRAM compression on; offer a quality menu (low/high)
+the web version renders with Compatibility (WebGL 2): use the phone budgets.
+always: 30 fps minimum in the busiest scene; idle screens should not redraw at 60 fps.
+TXT
+}
+
+cmd_device() {
+  phone || { computer_device; return; }
+  local cores ram big tier
+  cores=$(nproc); ram=$(awk '/MemTotal/ {printf "%.1f", $2 / 1048576}' /proc/meminfo)
+  big=$(grep -cE 'CPU part\s*: 0xd(4[1-9a-f]|0[bcde])' /proc/cpuinfo)
+  # Hatchlybox writes what Android knows (model, chip, screen, GPU); its Linux can't see it.
+  phone_info
+  tier=mid; { [ "$big" -ge 3 ] && awk "BEGIN {exit !($ram >= 6)}"; } && tier=high; awk "BEGIN {exit !($ram < 4)}" && tier=low
+  cat <<EOF
+phone: $model
+screen: $screen
+cpu: $cores cores ($big fast), ram: $ram GB  →  tier: $tier
+renderer: Godot gl_compatibility (OpenGL ES 3 on the phone); renders here are software (llvmpipe):
+  their fps is NOT the phone's, but draw calls, objects, nodes and memory are the same.
+
+budgets per frame at 60 fps ($tier tier):
+EOF
+  phone_budgets $tier
+  echo "always: 30 fps minimum in the busiest scene; battery: idle screens should not redraw at 60 fps."
+}
+
+cmd_plan() {
+  mkdir -p design
+  if [ -f design/visual-plan.md ]; then cat design/visual-plan.md; echo; echo "(design/visual-plan.md exists: update it)"; return; fi
+  cat > design/visual-plan.md <<'EOF'
+# Visual plan
+
+## Intent
+- What the user asked for, in their words:
+- Mood in three words:
+- References (games, films, art movements) it should evoke:
+
+## Direction
+- Style: (pixel / flat vector / hand-painted / low-poly / realistic-lite / mixed: why)
+- Dimension: (2D / 2.5D isometric / 2D with 3D-baked sprites / light 3D: why, given `visual device`)
+- Palette: (5–8 colours with roles: background, ground, accent, danger, UI text)
+- Shape language: (round = friendly, angular = danger, tall = grand…)
+- Typography:
+- Camera and framing:
+
+## Techniques (from `visual find`; ids)
+| Need | Technique | Cost | Why this one |
+|------|-----------|------|--------------|
+
+## Quality targets
+- First impression (what a screenshot must show):
+- Readability: (player, threats, pickups, UI legible at arm's length)
+- Budgets (from `visual device`): draw calls ≤ , nodes ≤ , video memory ≤
+- Done when: (`visual check` clean, renders reviewed, fps target)
+
+## Iterations
+| # | Render | What was wrong | Change |
+|---|--------|----------------|--------|
+EOF
+  echo "wrote design/visual-plan.md: fill it in (run visual find for the techniques, visual device for budgets)"
+}
+
+# ---- render: Godot with a real (software) OpenGL, in a virtual X display ----
+
+gl_env() {
+  # Hatchlybox's Alpine: Godot (glibc) uses the Debian OpenGL libraries next to its private glibc.
+  local l=$D/godot/gl/lib
+  if [ -e /lib/ld-musl-aarch64.so.1 ]; then
+    [ -d "$l" ] || return 1
+    export HATCHLYBOX_GODOT_LIBS=$l LIBGL_DRIVERS_PATH=$l/dri __GLX_VENDOR_LIBRARY_NAME=mesa XKB_CONFIG_ROOT=$D/godot/gl/share/xkb
+  fi
+  # A Mac renders with its own GPU.
+  mac && return 0
+  export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+}
+# has_lib <file>: a shared library the system's loader finds.
+has_lib() { ldconfig -p 2>/dev/null | grep -q "/$1\$" || [ -e "/usr/lib/$1" ] || ls /usr/lib/*-linux-gnu/"$1" /usr/lib64/"$1" >/dev/null 2>&1; }
+render_ready() {
+  if mac; then command -v godot >/dev/null; return; fi
+  if phone; then
+    command -v Xvfb >/dev/null && { [ -e /lib/ld-musl-aarch64.so.1 ] || [ -e /usr/lib/libXcursor.so.1 ]; } && { [ ! -e /lib/ld-musl-aarch64.so.1 ] || [ -f "$D/godot/gl/.ready" ]; }
+    return
+  fi
+  command -v Xvfb >/dev/null && has_lib libXcursor.so.1 && has_lib libGL.so.1
+}
+# vulkan_soft: software Vulkan (lavapipe), for Forward+ renders without a screen.
+vulkan_soft() { [[ ${VK_ICD_FILENAMES:-} == *lvp* ]] || ls /usr/share/vulkan/icd.d/lvp_icd*.json /etc/vulkan/icd.d/lvp_icd*.json >/dev/null 2>&1; }
+
+# computer_packages: the command that installs the renderer on this Linux (Xvfb, Mesa's OpenGL and Vulkan, X libs).
+computer_packages() {
+  if command -v apt-get >/dev/null 2>&1; then echo "apt-get install -y xvfb libgl1 libgl1-mesa-dri libglx-mesa0 mesa-vulkan-drivers libxcursor1 libxinerama1 libxrandr2 libxi6 libxkbcommon0 fonts-dejavu-core"
+  elif command -v dnf >/dev/null 2>&1; then echo "dnf install -y xorg-x11-server-Xvfb mesa-dri-drivers mesa-libGL mesa-vulkan-drivers libXcursor libXinerama libXrandr libXi libxkbcommon dejavu-sans-fonts"
+  elif command -v pacman >/dev/null 2>&1; then echo "pacman -S --needed --noconfirm xorg-server-xvfb mesa vulkan-swrast libxcursor libxinerama libxrandr libxi ttf-dejavu"
+  elif command -v zypper >/dev/null 2>&1; then echo "zypper install -y xorg-x11-server-Xvfb Mesa-dri Mesa-libGL1 libvulkan_lvp libXcursor1 libXinerama1 libXrandr2 libXi6 dejavu-fonts"
+  fi
+}
+
+cmd_setup() {
+  render_ready && { echo "renderer ready"; return 0; }
+  # --check: only say what's missing (front ends show it; nothing is installed).
+  if [ "${1:-}" = --check ]; then
+    if mac; then echo "install Godot first (hatchlybox godot)"
+    elif phone; then echo "not installed: visual setup installs it (about 50 MB)"
+    elif [ -n "$(computer_packages)" ]; then echo "sudo $(computer_packages)"
+    else echo "install Xvfb and Mesa (OpenGL and Vulkan) from your distribution"; fi
+    return 1
+  fi
+  mac && die "Godot isn't installed yet: run hatchlybox godot"
+  if ! phone; then
+    local pk; pk=$(computer_packages)
+    [ -n "$pk" ] || die "install Xvfb and Mesa (OpenGL and Vulkan) from your distribution, then run visual setup again"
+    # Agents don't use sudo: the user installs it once (Hatchlybox's Settings show this).
+    if [ "${HATCHLYBOX_TEST_UID:-$(id -u)}" != 0 ]; then
+      echo "the renderer needs system packages, installed once by an administrator:" >&2
+      echo "  sudo $pk" >&2
+      exit 1
+    fi
+    $pk >/dev/null || die "couldn't install the renderer: $pk"
+    render_ready && echo "renderer ready"
+    return
+  fi
+  if [ -e /lib/ld-musl-aarch64.so.1 ]; then
+    command -v Xvfb >/dev/null || apk add -q --no-progress xvfb mesa-dri-gallium xkeyboard-config font-dejavu || die "couldn't install xvfb (apk)"
+    local dl=$CACHE/downloads/gl g=$D/godot/gl f h n
+    mkdir -p "$dl"
+    echo "OpenGL libraries for Godot (46 MB, Debian 13)"
+    while read -r f h; do
+      n=$dl/${f##*/}
+      echo "$h  $n" | sha256sum -c --status 2>/dev/null && continue
+      curl -fsSL --retry 3 -o "$n.part" "https://snapshot.debian.org/archive/debian/20260101T145718Z/$f" && echo "$h  $n.part" | sha256sum -c --status \
+        && mv "$n.part" "$n" || { rm -f "$n.part"; die "couldn't download ${f##*/}"; }
+    done < "$V/gl.list"
+    rm -rf "$g.new" && mkdir -p "$g.new" && python3 -I "$V/bin/deb-unpack" "$g.new" "$dl"/*.deb && rm -rf "$g" && mv "$g.new" "$g" && touch "$g/.ready" \
+      || die "couldn't unpack the OpenGL libraries"
+    rm -rf "$dl"
+  else
+    command -v Xvfb >/dev/null || pacman -S --needed --noconfirm xorg-server-xvfb mesa libxcursor libxinerama libxrandr libxi >/dev/null || die "couldn't install xorg-server-xvfb and mesa (pacman)"
+  fi
+  render_ready && echo "renderer ready"
+}
+
+cmd_render() {
+  local p at=1,3 taps="" scene="" size="" out for=android method=gl_compatibility driver=opengl3
+  p=$(project) || die "no Godot project here (godot/project.godot)"
+  while [ $# -gt 0 ]; do
+    case $1 in --at) at=$2; shift 2 ;; --tap) taps=$2; shift 2 ;; --scene) scene=$2; shift 2 ;; --size) size=$2; shift 2 ;; --for) for=$2; shift 2 ;; *) die "unknown option $1" ;; esac
+  done
+  case $for in android|web) ;; linux|macos|windows) method=forward_plus driver=vulkan ;; *) die "--for android, web, linux, macos or windows" ;; esac
+  render_ready || die "the renderer isn't installed: run visual setup$(phone && echo " (about 50 MB)"), then try again"
+  gl_env || die "OpenGL libraries missing: run visual setup"
+  # Forward+ without a GPU needs software Vulkan; a Mac uses Metal.
+  if [ "$method" = forward_plus ]; then
+    if mac; then driver=metal
+    elif phone || ! vulkan_soft; then echo "no software Vulkan here (lavapipe): rendering with Compatibility instead; the computers' look will differ"; method=gl_compatibility driver=opengl3
+    fi
+  fi
+  if [ -z "$size" ]; then
+    local w h
+    w=$(sed -n 's/^window\/size\/viewport_width=//p' "$p/project.godot"); h=$(sed -n 's/^window\/size\/viewport_height=//p' "$p/project.godot")
+    w=${w:-1152}; h=${h:-648}
+    # Software rendering is slow: at most 720 px wide on a phone, 1280 on a computer (the stretch mode scales the same picture).
+    local cap=720; phone || cap=1280
+    [ "$w" -le $cap ] || { h=$((h * cap / w)); w=$cap; }
+    size=${w}x${h}
+  fi
+  echo "rendering at $size (taps are in the project's viewport pixels: $(sed -n 's/^window\/size\/viewport_width=//p' "$p/project.godot")x$(sed -n 's/^window\/size\/viewport_height=//p' "$p/project.godot"))"
+  out=$PWD/design/renders/$(date +%Y%m%d-%H%M%S); mkdir -p "$out"
+  mkdir -p "$p/.godot"; cp "$V/bin/capture.gd" "$p/.godot/visual-capture.gd"
+  local n=$((90 + RANDOM % 400)) x="" rc last=${at##*,}; last=${last%.*}
+  if mac; then
+    # A Mac has no virtual display: a small window, without taking the focus, for the few seconds it renders.
+    timeout $((last * 4 + 90)) godot --path "$p" --rendering-method "$method" --rendering-driver "$driver" --resolution "$size" --position 40,40 --audio-driver Dummy \
+      -s res://.godot/visual-capture.gd -- "$out" "$at" "$taps" "$scene" > "$out/log.txt" 2>&1
+    rc=$?
+  else
+    Xvfb ":$n" -screen 0 "${size}x24" -nolisten tcp >/dev/null 2>&1 & x=$!
+    for _ in 1 2 3 4 5 6 7 8 9 10; do [ -e "/tmp/.X11-unix/X$n" ] && break; sleep 0.5; done
+    # Only the virtual display: never a window on the phone's (or the desktop's) own screen.
+    env -u WAYLAND_DISPLAY DISPLAY=:$n timeout $((last * 4 + 90)) godot --path "$p" --display-driver x11 --rendering-method "$method" --rendering-driver "$driver" --resolution "$size" --audio-driver Dummy \
+      -s res://.godot/visual-capture.gd -- "$out" "$at" "$taps" "$scene" > "$out/log.txt" 2>&1
+    rc=$?
+    kill "$x" 2>/dev/null; wait "$x" 2>/dev/null
+  fi
+  rm -f "$p/.godot/visual-capture.gd"
+  grep -E 'SCRIPT ERROR|ERROR|at: ' "$out/log.txt" | grep -vE 'leaked|still in use|RID allocations|ObjectDB|object.cpp|resource.cpp|renderer_canvas_cull|core/os|main/main.cpp|dbus|joypad|udev|XCursor|wayland' | head -15
+  ls "$out"/shot-*.png >/dev/null 2>&1 || die "no screenshots (exit $rc): see $out/log.txt"
+  jq -c '.shots[] | {t, draw_calls, objects, nodes, video_mem_mb, static_mem_mb}' "$out/stats.json" 2>/dev/null
+  java -Xmx256m "$V/bin/VisualCheck.java" sheet "$out/sheet.png" "$out"/shot-*.png
+  echo "renders: $out (shot-N.png full size; sheet.png is small: look at that one), $method for $for"
+  echo "next: visual check $out/shot-*.png"
+}
+
+cmd_check() { java -Xmx256m "$V/bin/VisualCheck.java" check "$@"; }
+
+cmd_learn() {
+  local n=${1:-}; [[ $n =~ ^[a-z0-9-]+$ ]] || die "learn <name>: lowercase words joined by -, e.g. learn misty-forest-parallax"
+  mkdir -p design/learned
+  [ -f "design/learned/$n.md" ] && { echo "design/learned/$n.md exists: edit it"; return; }
+  cat > "design/learned/$n.md" <<EOF
+title: (what this makes)
+tags: (words someone would search for)
+styles: (pixel, flat, painted, low-poly, realistic…)
+cost: (low|medium|high on a phone)
+engine: godot4
+summary: (one line: what it gives and when to pick it)
+
+## Purpose
+## When it worked
+(the app, the look asked for, why this approach won over the alternatives)
+## How
+(the steps and the code that worked, trimmed to what's reusable)
+## Validation
+(what visual check / renders showed; the numbers: draw calls, nodes, video memory)
+## Adaptation
+(how to change it for other styles)
+EOF
+  echo "wrote design/learned/$n.md: fill it in. Hatchlybox adds it to the shared knowledge when the app builds."
+}
+
+case ${1:-} in
+  find) shift; cmd_find "$@" ;;
+  show) shift; cmd_show "$@" ;;
+  list) shift; cmd_list "$@" ;;
+  device) cmd_device ;;
+  plan) cmd_plan ;;
+  render) shift; cmd_render "$@" ;;
+  check) shift; cmd_check "$@" ;;
+  learn) shift; cmd_learn "$@" ;;
+  setup) shift; cmd_setup "$@" ;;
+  *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

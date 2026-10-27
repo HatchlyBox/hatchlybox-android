@@ -1,0 +1,1872 @@
+{
+  "name": "Detective cat",
+  "description": "A tabby cat detective: a new mystery at every level, each harder than the last. Sniff for clues, feed and pet him for energy, name the culprit",
+  "version": 1,
+  "size": "wide",
+  "refresh": 300,
+  "data": "./game.sh status",
+  "state": {
+    "happy": false,
+    "hat": false,
+    "level": 1,
+    "title": "",
+    "news": "",
+    "hearts": "",
+    "paws": "",
+    "rank": "",
+    "clues": [],
+    "suspects": [],
+    "found": 0,
+    "total": 0,
+    "canSniff": true,
+    "solved": 0
+  },
+  "ui": {
+    "type": "row",
+    "gap": 14,
+    "align": "center",
+    "children": [
+      {
+        "type": "canvas",
+        "view": [
+          150,
+          120
+        ],
+        "shapes": [
+          {
+            "shape": "ellipse",
+            "name": "shadow",
+            "x": 82,
+            "y": 113,
+            "rx": 44,
+            "ry": 5,
+            "fill": "text",
+            "opacity": 0.12
+          },
+          {
+            "shape": "group",
+            "name": "bowl",
+            "tap": {
+              "run": "./game.sh feed",
+              "set": {
+                "happy": true
+              },
+              "for": 3
+            },
+            "shapes": [
+              {
+                "shape": "ellipse",
+                "x": 26,
+                "y": 104,
+                "rx": 12,
+                "ry": 3.2,
+                "fill": "#B07A4A"
+              },
+              {
+                "shape": "path",
+                "d": "M12 104 L40 104 L36 114 L16 114 Z",
+                "fill": "primary"
+              },
+              {
+                "shape": "rect",
+                "x": 11,
+                "y": 102.5,
+                "w": 30,
+                "h": 3,
+                "corner": 1.5,
+                "fill": "primary"
+              }
+            ]
+          },
+          {
+            "shape": "group",
+            "name": "tail",
+            "anim": {
+              "rotate": 14,
+              "every": 3.2,
+              "pivot": [
+                108,
+                107
+              ]
+            },
+            "shapes": [
+              {
+                "shape": "path",
+                "d": "M108 104 C130 104 136 84 128 70 C125 64 131 60 134 66 C142 84 134 112 108 110 Z",
+                "fill": "#8E9096"
+              },
+              {
+                "shape": "path",
+                "name": "tail rings",
+                "d": "M124 98 L132 92 M131 86 L138 84 M131 76 L139 77 M127 67 L134 66",
+                "stroke": "#2A2B2F",
+                "width": 3.2,
+                "cap": "butt"
+              },
+              {
+                "shape": "path",
+                "name": "tail tip",
+                "d": "M128 70 C125 64 131 60 134 66 L131 69 Z",
+                "fill": "#2A2B2F"
+              }
+            ]
+          },
+          {
+            "shape": "group",
+            "name": "cat",
+            "tap": {
+              "run": "./game.sh pet",
+              "set": {
+                "happy": true
+              },
+              "for": 3
+            },
+            "anim": {
+              "scale": [
+                1.0,
+                1.035
+              ],
+              "every": 3.6,
+              "pivot": [
+                82,
+                112
+              ]
+            },
+            "shapes": [
+              {
+                "shape": "path",
+                "name": "body",
+                "d": "M56 112 C50 92 58 70 82 68 C106 70 114 92 108 112 Z",
+                "fill": "#8E9096"
+              },
+              {
+                "shape": "path",
+                "name": "body stripes",
+                "d": "M58 86 Q64 84 67 90 M55 96 Q62 93 66 99 M56 106 Q62 103 65 108 M106 86 Q100 84 97 90 M109 96 Q102 93 98 99 M108 106 Q102 103 99 108",
+                "stroke": "#2A2B2F",
+                "width": 3,
+                "fill": "none"
+              },
+              {
+                "shape": "path",
+                "name": "white chest",
+                "d": "M71 112 C69 96 75 80 82 80 C89 80 95 96 93 112 Z",
+                "fill": "#F4F2EE"
+              },
+              {
+                "shape": "ellipse",
+                "name": "left paw",
+                "x": 72,
+                "y": 111,
+                "rx": 7,
+                "ry": 4,
+                "fill": "#F4F2EE"
+              },
+              {
+                "shape": "ellipse",
+                "name": "right paw",
+                "x": 92,
+                "y": 111,
+                "rx": 7,
+                "ry": 4,
+                "fill": "#F4F2EE"
+              },
+              {
+                "shape": "group",
+                "name": "head",
+                "anim": {
+                  "rotate": 5,
+                  "every": 5.5,
+                  "delay": 1,
+                  "pivot": [
+                    82,
+                    70
+                  ]
+                },
+                "shapes": [
+                  {
+                    "shape": "path",
+                    "name": "ears",
+                    "d": "M60 52 L62 26 L78 42 Z M104 52 L102 26 L86 42 Z",
+                    "fill": "#8E9096"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "inner ears",
+                    "d": "M64 46 L65 33 L74 42 Z M100 46 L99 33 L90 42 Z",
+                    "fill": "#E8A3B0",
+                    "opacity": 0.8
+                  },
+                  {
+                    "shape": "ellipse",
+                    "name": "face",
+                    "x": 82,
+                    "y": 54,
+                    "rx": 25,
+                    "ry": 20,
+                    "fill": "#8E9096"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "tabby M",
+                    "d": "M73 44 L76 36 L82 42 L88 36 L91 44",
+                    "stroke": "#2A2B2F",
+                    "width": 2.4,
+                    "fill": "none"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "cheek stripes",
+                    "d": "M58 52 L66 53 M58 58 L66 57 M106 52 L98 53 M106 58 L98 57",
+                    "stroke": "#2A2B2F",
+                    "width": 2.2
+                  },
+                  {
+                    "shape": "path",
+                    "name": "white muzzle",
+                    "d": "M70 62 C70 56 76 56 82 59 C88 56 94 56 94 62 C94 70 88 74 82 74 C76 74 70 70 70 62 Z",
+                    "fill": "#F4F2EE"
+                  },
+                  {
+                    "shape": "group",
+                    "name": "eyes",
+                    "if": "!{happy}",
+                    "anim": {
+                      "kind": "pulse",
+                      "every": 4.2,
+                      "for": 0.22,
+                      "scale": [
+                        1,
+                        0.1
+                      ],
+                      "pivot": [
+                        82,
+                        51
+                      ]
+                    },
+                    "shapes": [
+                      {
+                        "shape": "ellipse",
+                        "x": 73,
+                        "y": 51,
+                        "rx": 4.2,
+                        "ry": 4.6,
+                        "fill": "#A6CF5B"
+                      },
+                      {
+                        "shape": "ellipse",
+                        "x": 91,
+                        "y": 51,
+                        "rx": 4.2,
+                        "ry": 4.6,
+                        "fill": "#A6CF5B"
+                      },
+                      {
+                        "shape": "ellipse",
+                        "x": 73,
+                        "y": 51,
+                        "rx": 1.3,
+                        "ry": 3.8,
+                        "fill": "#1C1C1E"
+                      },
+                      {
+                        "shape": "ellipse",
+                        "x": 91,
+                        "y": 51,
+                        "rx": 1.3,
+                        "ry": 3.8,
+                        "fill": "#1C1C1E"
+                      },
+                      {
+                        "shape": "circle",
+                        "x": 74.4,
+                        "y": 49.4,
+                        "r": 0.9,
+                        "fill": "#FFFFFF"
+                      },
+                      {
+                        "shape": "circle",
+                        "x": 92.4,
+                        "y": 49.4,
+                        "r": 0.9,
+                        "fill": "#FFFFFF"
+                      }
+                    ]
+                  },
+                  {
+                    "shape": "path",
+                    "name": "happy eyes",
+                    "if": "{happy}",
+                    "d": "M69 52 Q73 47 77 52 M87 52 Q91 47 95 52",
+                    "stroke": "#1C1C1E",
+                    "width": 1.8
+                  },
+                  {
+                    "shape": "path",
+                    "name": "nose",
+                    "d": "M79 59 L85 59 L82 62 Z",
+                    "fill": "#E8A3B0"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "mouth",
+                    "d": "M82 62 Q79 66 75.5 64 M82 62 Q85 66 88.5 64",
+                    "stroke": "#1C1C1E",
+                    "width": 1.1
+                  },
+                  {
+                    "shape": "path",
+                    "name": "whiskers",
+                    "d": "M71 62 L52 59 M71 65 L53 67 M93 62 L112 59 M93 65 L111 67",
+                    "stroke": "text",
+                    "width": 0.8,
+                    "opacity": 0.5
+                  },
+                  {
+                    "shape": "group",
+                    "name": "detective hat",
+                    "if": "{hat}",
+                    "shapes": [
+                      {
+                        "shape": "path",
+                        "d": "M60 38 C62 22 102 22 104 38 Z",
+                        "fill": "#8B6A47"
+                      },
+                      {
+                        "shape": "path",
+                        "d": "M56 39 C70 34 94 34 108 39 C94 42 70 42 56 39 Z",
+                        "fill": "#6E5236"
+                      },
+                      {
+                        "shape": "path",
+                        "d": "M64 32 L100 32",
+                        "stroke": "#5A4128",
+                        "width": 2
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "shape": "group",
+            "name": "hearts",
+            "if": "{happy}",
+            "shapes": [
+              {
+                "shape": "path",
+                "d": "M104.0 32.4 C104.0 30.0 107.2 29.2 108.0 31.6 C108.8 29.2 112.0 30.0 112.0 32.4 C112.0 34.8 108.0 37.2 108.0 38.0 C108.0 37.2 104.0 34.8 104.0 32.4 Z",
+                "fill": "red",
+                "anim": {
+                  "kind": "loop",
+                  "every": 1.5,
+                  "move": [
+                    4,
+                    -22
+                  ],
+                  "fade": 0
+                }
+              },
+              {
+                "shape": "path",
+                "d": "M54.0 35.8 C54.0 34.0 56.4 33.4 57.0 35.2 C57.6 33.4 60.0 34.0 60.0 35.8 C60.0 37.6 57.0 39.4 57.0 40.0 C57.0 39.4 54.0 37.6 54.0 35.8 Z",
+                "fill": "red",
+                "anim": {
+                  "kind": "loop",
+                  "every": 1.5,
+                  "delay": 0.5,
+                  "move": [
+                    -4,
+                    -20
+                  ],
+                  "fade": 0
+                }
+              },
+              {
+                "shape": "path",
+                "d": "M96.0 19.5 C96.0 18.0 98.0 17.5 98.5 19.0 C99.0 17.5 101.0 18.0 101.0 19.5 C101.0 21.0 98.5 22.5 98.5 23.0 C98.5 22.5 96.0 21.0 96.0 19.5 Z",
+                "fill": "magenta",
+                "anim": {
+                  "kind": "loop",
+                  "every": 1.5,
+                  "delay": 1.0,
+                  "move": [
+                    3,
+                    -16
+                  ],
+                  "fade": 0
+                }
+              }
+            ]
+          }
+        ],
+        "weight": 1
+      },
+      {
+        "type": "column",
+        "gap": 6,
+        "weight": 1.1,
+        "children": [
+          {
+            "type": "text",
+            "text": "Case {level}",
+            "style": "label",
+            "color": "primary"
+          },
+          {
+            "type": "text",
+            "text": "{title}",
+            "style": "title",
+            "bold": true,
+            "lines": 2
+          },
+          {
+            "type": "text",
+            "text": "{news}",
+            "style": "caption",
+            "color": "muted",
+            "lines": 3,
+            "weight": 1
+          },
+          {
+            "type": "row",
+            "gap": 10,
+            "align": "center",
+            "children": [
+              {
+                "type": "text",
+                "text": "{hearts}",
+                "color": "red",
+                "size": 15
+              },
+              {
+                "type": "text",
+                "text": "{paws}",
+                "color": "primary",
+                "size": 13,
+                "weight": 1
+              },
+              {
+                "type": "text",
+                "text": "{rank}",
+                "style": "caption",
+                "color": "muted"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": 8,
+            "children": [
+              {
+                "type": "button",
+                "text": "Sniff",
+                "style": "filled",
+                "action": {
+                  "run": "./game.sh sniff"
+                }
+              },
+              {
+                "type": "button",
+                "text": "Case",
+                "style": "tonal",
+                "action": {
+                  "screen": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "views": [
+    {
+      "when": "tiny",
+      "title": false,
+      "ui": {
+        "type": "canvas",
+        "view": [
+          150,
+          120
+        ],
+        "shapes": [
+          {
+            "shape": "ellipse",
+            "name": "shadow",
+            "x": 82,
+            "y": 113,
+            "rx": 44,
+            "ry": 5,
+            "fill": "text",
+            "opacity": 0.12
+          },
+          {
+            "shape": "group",
+            "name": "bowl",
+            "tap": {
+              "run": "./game.sh feed",
+              "set": {
+                "happy": true
+              },
+              "for": 3
+            },
+            "shapes": [
+              {
+                "shape": "ellipse",
+                "x": 26,
+                "y": 104,
+                "rx": 12,
+                "ry": 3.2,
+                "fill": "#B07A4A"
+              },
+              {
+                "shape": "path",
+                "d": "M12 104 L40 104 L36 114 L16 114 Z",
+                "fill": "primary"
+              },
+              {
+                "shape": "rect",
+                "x": 11,
+                "y": 102.5,
+                "w": 30,
+                "h": 3,
+                "corner": 1.5,
+                "fill": "primary"
+              }
+            ]
+          },
+          {
+            "shape": "group",
+            "name": "tail",
+            "anim": {
+              "rotate": 14,
+              "every": 3.2,
+              "pivot": [
+                108,
+                107
+              ]
+            },
+            "shapes": [
+              {
+                "shape": "path",
+                "d": "M108 104 C130 104 136 84 128 70 C125 64 131 60 134 66 C142 84 134 112 108 110 Z",
+                "fill": "#8E9096"
+              },
+              {
+                "shape": "path",
+                "name": "tail rings",
+                "d": "M124 98 L132 92 M131 86 L138 84 M131 76 L139 77 M127 67 L134 66",
+                "stroke": "#2A2B2F",
+                "width": 3.2,
+                "cap": "butt"
+              },
+              {
+                "shape": "path",
+                "name": "tail tip",
+                "d": "M128 70 C125 64 131 60 134 66 L131 69 Z",
+                "fill": "#2A2B2F"
+              }
+            ]
+          },
+          {
+            "shape": "group",
+            "name": "cat",
+            "tap": {
+              "run": "./game.sh pet",
+              "set": {
+                "happy": true
+              },
+              "for": 3
+            },
+            "anim": {
+              "scale": [
+                1.0,
+                1.035
+              ],
+              "every": 3.6,
+              "pivot": [
+                82,
+                112
+              ]
+            },
+            "shapes": [
+              {
+                "shape": "path",
+                "name": "body",
+                "d": "M56 112 C50 92 58 70 82 68 C106 70 114 92 108 112 Z",
+                "fill": "#8E9096"
+              },
+              {
+                "shape": "path",
+                "name": "body stripes",
+                "d": "M58 86 Q64 84 67 90 M55 96 Q62 93 66 99 M56 106 Q62 103 65 108 M106 86 Q100 84 97 90 M109 96 Q102 93 98 99 M108 106 Q102 103 99 108",
+                "stroke": "#2A2B2F",
+                "width": 3,
+                "fill": "none"
+              },
+              {
+                "shape": "path",
+                "name": "white chest",
+                "d": "M71 112 C69 96 75 80 82 80 C89 80 95 96 93 112 Z",
+                "fill": "#F4F2EE"
+              },
+              {
+                "shape": "ellipse",
+                "name": "left paw",
+                "x": 72,
+                "y": 111,
+                "rx": 7,
+                "ry": 4,
+                "fill": "#F4F2EE"
+              },
+              {
+                "shape": "ellipse",
+                "name": "right paw",
+                "x": 92,
+                "y": 111,
+                "rx": 7,
+                "ry": 4,
+                "fill": "#F4F2EE"
+              },
+              {
+                "shape": "group",
+                "name": "head",
+                "anim": {
+                  "rotate": 5,
+                  "every": 5.5,
+                  "delay": 1,
+                  "pivot": [
+                    82,
+                    70
+                  ]
+                },
+                "shapes": [
+                  {
+                    "shape": "path",
+                    "name": "ears",
+                    "d": "M60 52 L62 26 L78 42 Z M104 52 L102 26 L86 42 Z",
+                    "fill": "#8E9096"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "inner ears",
+                    "d": "M64 46 L65 33 L74 42 Z M100 46 L99 33 L90 42 Z",
+                    "fill": "#E8A3B0",
+                    "opacity": 0.8
+                  },
+                  {
+                    "shape": "ellipse",
+                    "name": "face",
+                    "x": 82,
+                    "y": 54,
+                    "rx": 25,
+                    "ry": 20,
+                    "fill": "#8E9096"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "tabby M",
+                    "d": "M73 44 L76 36 L82 42 L88 36 L91 44",
+                    "stroke": "#2A2B2F",
+                    "width": 2.4,
+                    "fill": "none"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "cheek stripes",
+                    "d": "M58 52 L66 53 M58 58 L66 57 M106 52 L98 53 M106 58 L98 57",
+                    "stroke": "#2A2B2F",
+                    "width": 2.2
+                  },
+                  {
+                    "shape": "path",
+                    "name": "white muzzle",
+                    "d": "M70 62 C70 56 76 56 82 59 C88 56 94 56 94 62 C94 70 88 74 82 74 C76 74 70 70 70 62 Z",
+                    "fill": "#F4F2EE"
+                  },
+                  {
+                    "shape": "group",
+                    "name": "eyes",
+                    "if": "!{happy}",
+                    "anim": {
+                      "kind": "pulse",
+                      "every": 4.2,
+                      "for": 0.22,
+                      "scale": [
+                        1,
+                        0.1
+                      ],
+                      "pivot": [
+                        82,
+                        51
+                      ]
+                    },
+                    "shapes": [
+                      {
+                        "shape": "ellipse",
+                        "x": 73,
+                        "y": 51,
+                        "rx": 4.2,
+                        "ry": 4.6,
+                        "fill": "#A6CF5B"
+                      },
+                      {
+                        "shape": "ellipse",
+                        "x": 91,
+                        "y": 51,
+                        "rx": 4.2,
+                        "ry": 4.6,
+                        "fill": "#A6CF5B"
+                      },
+                      {
+                        "shape": "ellipse",
+                        "x": 73,
+                        "y": 51,
+                        "rx": 1.3,
+                        "ry": 3.8,
+                        "fill": "#1C1C1E"
+                      },
+                      {
+                        "shape": "ellipse",
+                        "x": 91,
+                        "y": 51,
+                        "rx": 1.3,
+                        "ry": 3.8,
+                        "fill": "#1C1C1E"
+                      },
+                      {
+                        "shape": "circle",
+                        "x": 74.4,
+                        "y": 49.4,
+                        "r": 0.9,
+                        "fill": "#FFFFFF"
+                      },
+                      {
+                        "shape": "circle",
+                        "x": 92.4,
+                        "y": 49.4,
+                        "r": 0.9,
+                        "fill": "#FFFFFF"
+                      }
+                    ]
+                  },
+                  {
+                    "shape": "path",
+                    "name": "happy eyes",
+                    "if": "{happy}",
+                    "d": "M69 52 Q73 47 77 52 M87 52 Q91 47 95 52",
+                    "stroke": "#1C1C1E",
+                    "width": 1.8
+                  },
+                  {
+                    "shape": "path",
+                    "name": "nose",
+                    "d": "M79 59 L85 59 L82 62 Z",
+                    "fill": "#E8A3B0"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "mouth",
+                    "d": "M82 62 Q79 66 75.5 64 M82 62 Q85 66 88.5 64",
+                    "stroke": "#1C1C1E",
+                    "width": 1.1
+                  },
+                  {
+                    "shape": "path",
+                    "name": "whiskers",
+                    "d": "M71 62 L52 59 M71 65 L53 67 M93 62 L112 59 M93 65 L111 67",
+                    "stroke": "text",
+                    "width": 0.8,
+                    "opacity": 0.5
+                  },
+                  {
+                    "shape": "group",
+                    "name": "detective hat",
+                    "if": "{hat}",
+                    "shapes": [
+                      {
+                        "shape": "path",
+                        "d": "M60 38 C62 22 102 22 104 38 Z",
+                        "fill": "#8B6A47"
+                      },
+                      {
+                        "shape": "path",
+                        "d": "M56 39 C70 34 94 34 108 39 C94 42 70 42 56 39 Z",
+                        "fill": "#6E5236"
+                      },
+                      {
+                        "shape": "path",
+                        "d": "M64 32 L100 32",
+                        "stroke": "#5A4128",
+                        "width": 2
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "shape": "group",
+            "name": "hearts",
+            "if": "{happy}",
+            "shapes": [
+              {
+                "shape": "path",
+                "d": "M104.0 32.4 C104.0 30.0 107.2 29.2 108.0 31.6 C108.8 29.2 112.0 30.0 112.0 32.4 C112.0 34.8 108.0 37.2 108.0 38.0 C108.0 37.2 104.0 34.8 104.0 32.4 Z",
+                "fill": "red",
+                "anim": {
+                  "kind": "loop",
+                  "every": 1.5,
+                  "move": [
+                    4,
+                    -22
+                  ],
+                  "fade": 0
+                }
+              },
+              {
+                "shape": "path",
+                "d": "M54.0 35.8 C54.0 34.0 56.4 33.4 57.0 35.2 C57.6 33.4 60.0 34.0 60.0 35.8 C60.0 37.6 57.0 39.4 57.0 40.0 C57.0 39.4 54.0 37.6 54.0 35.8 Z",
+                "fill": "red",
+                "anim": {
+                  "kind": "loop",
+                  "every": 1.5,
+                  "delay": 0.5,
+                  "move": [
+                    -4,
+                    -20
+                  ],
+                  "fade": 0
+                }
+              },
+              {
+                "shape": "path",
+                "d": "M96.0 19.5 C96.0 18.0 98.0 17.5 98.5 19.0 C99.0 17.5 101.0 18.0 101.0 19.5 C101.0 21.0 98.5 22.5 98.5 23.0 C98.5 22.5 96.0 21.0 96.0 19.5 Z",
+                "fill": "magenta",
+                "anim": {
+                  "kind": "loop",
+                  "every": 1.5,
+                  "delay": 1.0,
+                  "move": [
+                    3,
+                    -16
+                  ],
+                  "fade": 0
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "when": "small tall",
+      "ui": {
+        "type": "column",
+        "gap": 6,
+        "children": [
+          {
+            "type": "canvas",
+            "view": [
+              150,
+              120
+            ],
+            "shapes": [
+              {
+                "shape": "ellipse",
+                "name": "shadow",
+                "x": 82,
+                "y": 113,
+                "rx": 44,
+                "ry": 5,
+                "fill": "text",
+                "opacity": 0.12
+              },
+              {
+                "shape": "group",
+                "name": "bowl",
+                "tap": {
+                  "run": "./game.sh feed",
+                  "set": {
+                    "happy": true
+                  },
+                  "for": 3
+                },
+                "shapes": [
+                  {
+                    "shape": "ellipse",
+                    "x": 26,
+                    "y": 104,
+                    "rx": 12,
+                    "ry": 3.2,
+                    "fill": "#B07A4A"
+                  },
+                  {
+                    "shape": "path",
+                    "d": "M12 104 L40 104 L36 114 L16 114 Z",
+                    "fill": "primary"
+                  },
+                  {
+                    "shape": "rect",
+                    "x": 11,
+                    "y": 102.5,
+                    "w": 30,
+                    "h": 3,
+                    "corner": 1.5,
+                    "fill": "primary"
+                  }
+                ]
+              },
+              {
+                "shape": "group",
+                "name": "tail",
+                "anim": {
+                  "rotate": 14,
+                  "every": 3.2,
+                  "pivot": [
+                    108,
+                    107
+                  ]
+                },
+                "shapes": [
+                  {
+                    "shape": "path",
+                    "d": "M108 104 C130 104 136 84 128 70 C125 64 131 60 134 66 C142 84 134 112 108 110 Z",
+                    "fill": "#8E9096"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "tail rings",
+                    "d": "M124 98 L132 92 M131 86 L138 84 M131 76 L139 77 M127 67 L134 66",
+                    "stroke": "#2A2B2F",
+                    "width": 3.2,
+                    "cap": "butt"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "tail tip",
+                    "d": "M128 70 C125 64 131 60 134 66 L131 69 Z",
+                    "fill": "#2A2B2F"
+                  }
+                ]
+              },
+              {
+                "shape": "group",
+                "name": "cat",
+                "tap": {
+                  "run": "./game.sh pet",
+                  "set": {
+                    "happy": true
+                  },
+                  "for": 3
+                },
+                "anim": {
+                  "scale": [
+                    1.0,
+                    1.035
+                  ],
+                  "every": 3.6,
+                  "pivot": [
+                    82,
+                    112
+                  ]
+                },
+                "shapes": [
+                  {
+                    "shape": "path",
+                    "name": "body",
+                    "d": "M56 112 C50 92 58 70 82 68 C106 70 114 92 108 112 Z",
+                    "fill": "#8E9096"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "body stripes",
+                    "d": "M58 86 Q64 84 67 90 M55 96 Q62 93 66 99 M56 106 Q62 103 65 108 M106 86 Q100 84 97 90 M109 96 Q102 93 98 99 M108 106 Q102 103 99 108",
+                    "stroke": "#2A2B2F",
+                    "width": 3,
+                    "fill": "none"
+                  },
+                  {
+                    "shape": "path",
+                    "name": "white chest",
+                    "d": "M71 112 C69 96 75 80 82 80 C89 80 95 96 93 112 Z",
+                    "fill": "#F4F2EE"
+                  },
+                  {
+                    "shape": "ellipse",
+                    "name": "left paw",
+                    "x": 72,
+                    "y": 111,
+                    "rx": 7,
+                    "ry": 4,
+                    "fill": "#F4F2EE"
+                  },
+                  {
+                    "shape": "ellipse",
+                    "name": "right paw",
+                    "x": 92,
+                    "y": 111,
+                    "rx": 7,
+                    "ry": 4,
+                    "fill": "#F4F2EE"
+                  },
+                  {
+                    "shape": "group",
+                    "name": "head",
+                    "anim": {
+                      "rotate": 5,
+                      "every": 5.5,
+                      "delay": 1,
+                      "pivot": [
+                        82,
+                        70
+                      ]
+                    },
+                    "shapes": [
+                      {
+                        "shape": "path",
+                        "name": "ears",
+                        "d": "M60 52 L62 26 L78 42 Z M104 52 L102 26 L86 42 Z",
+                        "fill": "#8E9096"
+                      },
+                      {
+                        "shape": "path",
+                        "name": "inner ears",
+                        "d": "M64 46 L65 33 L74 42 Z M100 46 L99 33 L90 42 Z",
+                        "fill": "#E8A3B0",
+                        "opacity": 0.8
+                      },
+                      {
+                        "shape": "ellipse",
+                        "name": "face",
+                        "x": 82,
+                        "y": 54,
+                        "rx": 25,
+                        "ry": 20,
+                        "fill": "#8E9096"
+                      },
+                      {
+                        "shape": "path",
+                        "name": "tabby M",
+                        "d": "M73 44 L76 36 L82 42 L88 36 L91 44",
+                        "stroke": "#2A2B2F",
+                        "width": 2.4,
+                        "fill": "none"
+                      },
+                      {
+                        "shape": "path",
+                        "name": "cheek stripes",
+                        "d": "M58 52 L66 53 M58 58 L66 57 M106 52 L98 53 M106 58 L98 57",
+                        "stroke": "#2A2B2F",
+                        "width": 2.2
+                      },
+                      {
+                        "shape": "path",
+                        "name": "white muzzle",
+                        "d": "M70 62 C70 56 76 56 82 59 C88 56 94 56 94 62 C94 70 88 74 82 74 C76 74 70 70 70 62 Z",
+                        "fill": "#F4F2EE"
+                      },
+                      {
+                        "shape": "group",
+                        "name": "eyes",
+                        "if": "!{happy}",
+                        "anim": {
+                          "kind": "pulse",
+                          "every": 4.2,
+                          "for": 0.22,
+                          "scale": [
+                            1,
+                            0.1
+                          ],
+                          "pivot": [
+                            82,
+                            51
+                          ]
+                        },
+                        "shapes": [
+                          {
+                            "shape": "ellipse",
+                            "x": 73,
+                            "y": 51,
+                            "rx": 4.2,
+                            "ry": 4.6,
+                            "fill": "#A6CF5B"
+                          },
+                          {
+                            "shape": "ellipse",
+                            "x": 91,
+                            "y": 51,
+                            "rx": 4.2,
+                            "ry": 4.6,
+                            "fill": "#A6CF5B"
+                          },
+                          {
+                            "shape": "ellipse",
+                            "x": 73,
+                            "y": 51,
+                            "rx": 1.3,
+                            "ry": 3.8,
+                            "fill": "#1C1C1E"
+                          },
+                          {
+                            "shape": "ellipse",
+                            "x": 91,
+                            "y": 51,
+                            "rx": 1.3,
+                            "ry": 3.8,
+                            "fill": "#1C1C1E"
+                          },
+                          {
+                            "shape": "circle",
+                            "x": 74.4,
+                            "y": 49.4,
+                            "r": 0.9,
+                            "fill": "#FFFFFF"
+                          },
+                          {
+                            "shape": "circle",
+                            "x": 92.4,
+                            "y": 49.4,
+                            "r": 0.9,
+                            "fill": "#FFFFFF"
+                          }
+                        ]
+                      },
+                      {
+                        "shape": "path",
+                        "name": "happy eyes",
+                        "if": "{happy}",
+                        "d": "M69 52 Q73 47 77 52 M87 52 Q91 47 95 52",
+                        "stroke": "#1C1C1E",
+                        "width": 1.8
+                      },
+                      {
+                        "shape": "path",
+                        "name": "nose",
+                        "d": "M79 59 L85 59 L82 62 Z",
+                        "fill": "#E8A3B0"
+                      },
+                      {
+                        "shape": "path",
+                        "name": "mouth",
+                        "d": "M82 62 Q79 66 75.5 64 M82 62 Q85 66 88.5 64",
+                        "stroke": "#1C1C1E",
+                        "width": 1.1
+                      },
+                      {
+                        "shape": "path",
+                        "name": "whiskers",
+                        "d": "M71 62 L52 59 M71 65 L53 67 M93 62 L112 59 M93 65 L111 67",
+                        "stroke": "text",
+                        "width": 0.8,
+                        "opacity": 0.5
+                      },
+                      {
+                        "shape": "group",
+                        "name": "detective hat",
+                        "if": "{hat}",
+                        "shapes": [
+                          {
+                            "shape": "path",
+                            "d": "M60 38 C62 22 102 22 104 38 Z",
+                            "fill": "#8B6A47"
+                          },
+                          {
+                            "shape": "path",
+                            "d": "M56 39 C70 34 94 34 108 39 C94 42 70 42 56 39 Z",
+                            "fill": "#6E5236"
+                          },
+                          {
+                            "shape": "path",
+                            "d": "M64 32 L100 32",
+                            "stroke": "#5A4128",
+                            "width": 2
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "shape": "group",
+                "name": "hearts",
+                "if": "{happy}",
+                "shapes": [
+                  {
+                    "shape": "path",
+                    "d": "M104.0 32.4 C104.0 30.0 107.2 29.2 108.0 31.6 C108.8 29.2 112.0 30.0 112.0 32.4 C112.0 34.8 108.0 37.2 108.0 38.0 C108.0 37.2 104.0 34.8 104.0 32.4 Z",
+                    "fill": "red",
+                    "anim": {
+                      "kind": "loop",
+                      "every": 1.5,
+                      "move": [
+                        4,
+                        -22
+                      ],
+                      "fade": 0
+                    }
+                  },
+                  {
+                    "shape": "path",
+                    "d": "M54.0 35.8 C54.0 34.0 56.4 33.4 57.0 35.2 C57.6 33.4 60.0 34.0 60.0 35.8 C60.0 37.6 57.0 39.4 57.0 40.0 C57.0 39.4 54.0 37.6 54.0 35.8 Z",
+                    "fill": "red",
+                    "anim": {
+                      "kind": "loop",
+                      "every": 1.5,
+                      "delay": 0.5,
+                      "move": [
+                        -4,
+                        -20
+                      ],
+                      "fade": 0
+                    }
+                  },
+                  {
+                    "shape": "path",
+                    "d": "M96.0 19.5 C96.0 18.0 98.0 17.5 98.5 19.0 C99.0 17.5 101.0 18.0 101.0 19.5 C101.0 21.0 98.5 22.5 98.5 23.0 C98.5 22.5 96.0 21.0 96.0 19.5 Z",
+                    "fill": "magenta",
+                    "anim": {
+                      "kind": "loop",
+                      "every": 1.5,
+                      "delay": 1.0,
+                      "move": [
+                        3,
+                        -16
+                      ],
+                      "fade": 0
+                    }
+                  }
+                ]
+              }
+            ],
+            "weight": 1
+          },
+          {
+            "type": "text",
+            "text": "Case {level}: {title}",
+            "style": "label",
+            "lines": 1
+          },
+          {
+            "type": "row",
+            "gap": 10,
+            "align": "center",
+            "children": [
+              {
+                "type": "text",
+                "text": "{hearts}",
+                "color": "red",
+                "size": 15
+              },
+              {
+                "type": "text",
+                "text": "{paws}",
+                "color": "primary",
+                "size": 13,
+                "weight": 1
+              },
+              {
+                "type": "text",
+                "text": "{rank}",
+                "style": "caption",
+                "color": "muted"
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "gap": 8,
+            "children": [
+              {
+                "type": "button",
+                "text": "Sniff",
+                "style": "filled",
+                "action": {
+                  "run": "./game.sh sniff"
+                }
+              },
+              {
+                "type": "button",
+                "text": "Case",
+                "style": "tonal",
+                "action": {
+                  "screen": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "screen": {
+    "title": "Wifoz investigates",
+    "ui": {
+      "type": "column",
+      "scroll": true,
+      "gap": 12,
+      "children": [
+        {
+          "type": "canvas",
+          "view": [
+            150,
+            120
+          ],
+          "shapes": [
+            {
+              "shape": "ellipse",
+              "name": "shadow",
+              "x": 82,
+              "y": 113,
+              "rx": 44,
+              "ry": 5,
+              "fill": "text",
+              "opacity": 0.12
+            },
+            {
+              "shape": "group",
+              "name": "bowl",
+              "tap": {
+                "run": "./game.sh feed",
+                "set": {
+                  "happy": true
+                },
+                "for": 3
+              },
+              "shapes": [
+                {
+                  "shape": "ellipse",
+                  "x": 26,
+                  "y": 104,
+                  "rx": 12,
+                  "ry": 3.2,
+                  "fill": "#B07A4A"
+                },
+                {
+                  "shape": "path",
+                  "d": "M12 104 L40 104 L36 114 L16 114 Z",
+                  "fill": "primary"
+                },
+                {
+                  "shape": "rect",
+                  "x": 11,
+                  "y": 102.5,
+                  "w": 30,
+                  "h": 3,
+                  "corner": 1.5,
+                  "fill": "primary"
+                }
+              ]
+            },
+            {
+              "shape": "group",
+              "name": "tail",
+              "anim": {
+                "rotate": 14,
+                "every": 3.2,
+                "pivot": [
+                  108,
+                  107
+                ]
+              },
+              "shapes": [
+                {
+                  "shape": "path",
+                  "d": "M108 104 C130 104 136 84 128 70 C125 64 131 60 134 66 C142 84 134 112 108 110 Z",
+                  "fill": "#8E9096"
+                },
+                {
+                  "shape": "path",
+                  "name": "tail rings",
+                  "d": "M124 98 L132 92 M131 86 L138 84 M131 76 L139 77 M127 67 L134 66",
+                  "stroke": "#2A2B2F",
+                  "width": 3.2,
+                  "cap": "butt"
+                },
+                {
+                  "shape": "path",
+                  "name": "tail tip",
+                  "d": "M128 70 C125 64 131 60 134 66 L131 69 Z",
+                  "fill": "#2A2B2F"
+                }
+              ]
+            },
+            {
+              "shape": "group",
+              "name": "cat",
+              "tap": {
+                "run": "./game.sh pet",
+                "set": {
+                  "happy": true
+                },
+                "for": 3
+              },
+              "anim": {
+                "scale": [
+                  1.0,
+                  1.035
+                ],
+                "every": 3.6,
+                "pivot": [
+                  82,
+                  112
+                ]
+              },
+              "shapes": [
+                {
+                  "shape": "path",
+                  "name": "body",
+                  "d": "M56 112 C50 92 58 70 82 68 C106 70 114 92 108 112 Z",
+                  "fill": "#8E9096"
+                },
+                {
+                  "shape": "path",
+                  "name": "body stripes",
+                  "d": "M58 86 Q64 84 67 90 M55 96 Q62 93 66 99 M56 106 Q62 103 65 108 M106 86 Q100 84 97 90 M109 96 Q102 93 98 99 M108 106 Q102 103 99 108",
+                  "stroke": "#2A2B2F",
+                  "width": 3,
+                  "fill": "none"
+                },
+                {
+                  "shape": "path",
+                  "name": "white chest",
+                  "d": "M71 112 C69 96 75 80 82 80 C89 80 95 96 93 112 Z",
+                  "fill": "#F4F2EE"
+                },
+                {
+                  "shape": "ellipse",
+                  "name": "left paw",
+                  "x": 72,
+                  "y": 111,
+                  "rx": 7,
+                  "ry": 4,
+                  "fill": "#F4F2EE"
+                },
+                {
+                  "shape": "ellipse",
+                  "name": "right paw",
+                  "x": 92,
+                  "y": 111,
+                  "rx": 7,
+                  "ry": 4,
+                  "fill": "#F4F2EE"
+                },
+                {
+                  "shape": "group",
+                  "name": "head",
+                  "anim": {
+                    "rotate": 5,
+                    "every": 5.5,
+                    "delay": 1,
+                    "pivot": [
+                      82,
+                      70
+                    ]
+                  },
+                  "shapes": [
+                    {
+                      "shape": "path",
+                      "name": "ears",
+                      "d": "M60 52 L62 26 L78 42 Z M104 52 L102 26 L86 42 Z",
+                      "fill": "#8E9096"
+                    },
+                    {
+                      "shape": "path",
+                      "name": "inner ears",
+                      "d": "M64 46 L65 33 L74 42 Z M100 46 L99 33 L90 42 Z",
+                      "fill": "#E8A3B0",
+                      "opacity": 0.8
+                    },
+                    {
+                      "shape": "ellipse",
+                      "name": "face",
+                      "x": 82,
+                      "y": 54,
+                      "rx": 25,
+                      "ry": 20,
+                      "fill": "#8E9096"
+                    },
+                    {
+                      "shape": "path",
+                      "name": "tabby M",
+                      "d": "M73 44 L76 36 L82 42 L88 36 L91 44",
+                      "stroke": "#2A2B2F",
+                      "width": 2.4,
+                      "fill": "none"
+                    },
+                    {
+                      "shape": "path",
+                      "name": "cheek stripes",
+                      "d": "M58 52 L66 53 M58 58 L66 57 M106 52 L98 53 M106 58 L98 57",
+                      "stroke": "#2A2B2F",
+                      "width": 2.2
+                    },
+                    {
+                      "shape": "path",
+                      "name": "white muzzle",
+                      "d": "M70 62 C70 56 76 56 82 59 C88 56 94 56 94 62 C94 70 88 74 82 74 C76 74 70 70 70 62 Z",
+                      "fill": "#F4F2EE"
+                    },
+                    {
+                      "shape": "group",
+                      "name": "eyes",
+                      "if": "!{happy}",
+                      "anim": {
+                        "kind": "pulse",
+                        "every": 4.2,
+                        "for": 0.22,
+                        "scale": [
+                          1,
+                          0.1
+                        ],
+                        "pivot": [
+                          82,
+                          51
+                        ]
+                      },
+                      "shapes": [
+                        {
+                          "shape": "ellipse",
+                          "x": 73,
+                          "y": 51,
+                          "rx": 4.2,
+                          "ry": 4.6,
+                          "fill": "#A6CF5B"
+                        },
+                        {
+                          "shape": "ellipse",
+                          "x": 91,
+                          "y": 51,
+                          "rx": 4.2,
+                          "ry": 4.6,
+                          "fill": "#A6CF5B"
+                        },
+                        {
+                          "shape": "ellipse",
+                          "x": 73,
+                          "y": 51,
+                          "rx": 1.3,
+                          "ry": 3.8,
+                          "fill": "#1C1C1E"
+                        },
+                        {
+                          "shape": "ellipse",
+                          "x": 91,
+                          "y": 51,
+                          "rx": 1.3,
+                          "ry": 3.8,
+                          "fill": "#1C1C1E"
+                        },
+                        {
+                          "shape": "circle",
+                          "x": 74.4,
+                          "y": 49.4,
+                          "r": 0.9,
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "shape": "circle",
+                          "x": 92.4,
+                          "y": 49.4,
+                          "r": 0.9,
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "shape": "path",
+                      "name": "happy eyes",
+                      "if": "{happy}",
+                      "d": "M69 52 Q73 47 77 52 M87 52 Q91 47 95 52",
+                      "stroke": "#1C1C1E",
+                      "width": 1.8
+                    },
+                    {
+                      "shape": "path",
+                      "name": "nose",
+                      "d": "M79 59 L85 59 L82 62 Z",
+                      "fill": "#E8A3B0"
+                    },
+                    {
+                      "shape": "path",
+                      "name": "mouth",
+                      "d": "M82 62 Q79 66 75.5 64 M82 62 Q85 66 88.5 64",
+                      "stroke": "#1C1C1E",
+                      "width": 1.1
+                    },
+                    {
+                      "shape": "path",
+                      "name": "whiskers",
+                      "d": "M71 62 L52 59 M71 65 L53 67 M93 62 L112 59 M93 65 L111 67",
+                      "stroke": "text",
+                      "width": 0.8,
+                      "opacity": 0.5
+                    },
+                    {
+                      "shape": "group",
+                      "name": "detective hat",
+                      "if": "{hat}",
+                      "shapes": [
+                        {
+                          "shape": "path",
+                          "d": "M60 38 C62 22 102 22 104 38 Z",
+                          "fill": "#8B6A47"
+                        },
+                        {
+                          "shape": "path",
+                          "d": "M56 39 C70 34 94 34 108 39 C94 42 70 42 56 39 Z",
+                          "fill": "#6E5236"
+                        },
+                        {
+                          "shape": "path",
+                          "d": "M64 32 L100 32",
+                          "stroke": "#5A4128",
+                          "width": 2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "shape": "group",
+              "name": "hearts",
+              "if": "{happy}",
+              "shapes": [
+                {
+                  "shape": "path",
+                  "d": "M104.0 32.4 C104.0 30.0 107.2 29.2 108.0 31.6 C108.8 29.2 112.0 30.0 112.0 32.4 C112.0 34.8 108.0 37.2 108.0 38.0 C108.0 37.2 104.0 34.8 104.0 32.4 Z",
+                  "fill": "red",
+                  "anim": {
+                    "kind": "loop",
+                    "every": 1.5,
+                    "move": [
+                      4,
+                      -22
+                    ],
+                    "fade": 0
+                  }
+                },
+                {
+                  "shape": "path",
+                  "d": "M54.0 35.8 C54.0 34.0 56.4 33.4 57.0 35.2 C57.6 33.4 60.0 34.0 60.0 35.8 C60.0 37.6 57.0 39.4 57.0 40.0 C57.0 39.4 54.0 37.6 54.0 35.8 Z",
+                  "fill": "red",
+                  "anim": {
+                    "kind": "loop",
+                    "every": 1.5,
+                    "delay": 0.5,
+                    "move": [
+                      -4,
+                      -20
+                    ],
+                    "fade": 0
+                  }
+                },
+                {
+                  "shape": "path",
+                  "d": "M96.0 19.5 C96.0 18.0 98.0 17.5 98.5 19.0 C99.0 17.5 101.0 18.0 101.0 19.5 C101.0 21.0 98.5 22.5 98.5 23.0 C98.5 22.5 96.0 21.0 96.0 19.5 Z",
+                  "fill": "magenta",
+                  "anim": {
+                    "kind": "loop",
+                    "every": 1.5,
+                    "delay": 1.0,
+                    "move": [
+                      3,
+                      -16
+                    ],
+                    "fade": 0
+                  }
+                }
+              ]
+            }
+          ],
+          "height": 170
+        },
+        {
+          "type": "text",
+          "text": "Case {level} · {rank}",
+          "style": "label",
+          "color": "primary"
+        },
+        {
+          "type": "text",
+          "text": "{title}",
+          "style": "headline"
+        },
+        {
+          "type": "text",
+          "text": "{story}"
+        },
+        {
+          "type": "row",
+          "gap": 10,
+          "align": "center",
+          "children": [
+            {
+              "type": "text",
+              "text": "{hearts}",
+              "color": "red",
+              "size": 15
+            },
+            {
+              "type": "text",
+              "text": "{paws}",
+              "color": "primary",
+              "size": 13,
+              "weight": 1
+            },
+            {
+              "type": "text",
+              "text": "{rank}",
+              "style": "caption",
+              "color": "muted"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "{news}",
+          "style": "caption",
+          "padding": 10,
+          "background": "container",
+          "corner": 12
+        },
+        {
+          "type": "header",
+          "text": "Clues",
+          "icon": "search",
+          "trailing": "{found} of {total}"
+        },
+        {
+          "type": "text",
+          "if": "!{found}",
+          "text": "No clues yet. Sniff around: each sniff costs a paw.",
+          "style": "caption",
+          "color": "muted"
+        },
+        {
+          "type": "list",
+          "items": "{clues}",
+          "gap": 8,
+          "item": {
+            "type": "row",
+            "gap": 8,
+            "children": [
+              {
+                "type": "text",
+                "text": "{index}.",
+                "color": "primary",
+                "bold": true
+              },
+              {
+                "type": "text",
+                "text": "{item}",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "button",
+          "if": "{canSniff}",
+          "text": "Sniff for a clue",
+          "style": "filled",
+          "action": {
+            "run": "./game.sh sniff"
+          }
+        },
+        {
+          "type": "header",
+          "text": "Suspects",
+          "icon": "person",
+          "trailing": "who did it?"
+        },
+        {
+          "type": "text",
+          "text": "Each clue rules some of them out. Accuse the one left; a wrong guess costs a heart.",
+          "style": "caption",
+          "color": "muted"
+        },
+        {
+          "type": "list",
+          "items": "{suspects}",
+          "gap": 10,
+          "item": {
+            "type": "row",
+            "gap": 10,
+            "align": "center",
+            "children": [
+              {
+                "type": "column",
+                "weight": 1,
+                "children": [
+                  {
+                    "type": "text",
+                    "text": "{item.name} the {item.kind}",
+                    "bold": true
+                  },
+                  {
+                    "type": "text",
+                    "text": "{item.about}",
+                    "style": "caption",
+                    "color": "muted"
+                  }
+                ]
+              },
+              {
+                "type": "button",
+                "if": "!{item.out}",
+                "text": "Accuse",
+                "style": "tonal",
+                "action": {
+                  "run": "./game.sh accuse {item.id}"
+                }
+              },
+              {
+                "type": "text",
+                "if": "{item.out}",
+                "text": "not them",
+                "style": "caption",
+                "color": "muted"
+              }
+            ]
+          }
+        },
+        {
+          "type": "divider"
+        },
+        {
+          "type": "row",
+          "gap": 8,
+          "align": "center",
+          "children": [
+            {
+              "type": "text",
+              "text": "{solved} solved · paws come back every 15 minutes",
+              "style": "caption",
+              "color": "muted",
+              "weight": 1
+            },
+            {
+              "type": "button",
+              "text": "Feed",
+              "style": "text",
+              "action": {
+                "run": "./game.sh feed",
+                "set": {
+                  "happy": true
+                },
+                "for": 3
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
