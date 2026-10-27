@@ -417,12 +417,16 @@ class MakerModel(app: Application) : AndroidViewModel(app) {
             # Until it's done. A worker that stopped (dead, or "interrupted") goes to the health check, which
             # carries it on as a new job (watched here too) or marks it failed.
             expected=${'$'}(jq -er '.id' /root/.cache/hatchlybox/job.json) || exit 1
+            # What the agent and the build are doing, as they do it: log.txt always points at the current job's log.
+            tail -n 40 -F /root/.cache/hatchlybox/log.txt 2>/dev/null & tailer=${'$'}!
+            trap 'kill ${'$'}tailer 2>/dev/null' EXIT
             while jq -e '.phase | IN("queued","agent","checking","building","fixing","art","installing","uploading","interrupted")' /root/.cache/hatchlybox/job.json >/dev/null 2>&1; do
                 [ "${'$'}(jq -r '.id' /root/.cache/hatchlybox/job.json)" = "${'$'}expected" ] || { echo "Task identity changed; check Tasks."; exit 1; }
                 pid=${'$'}(jq -r '.pid // 0' /root/.cache/hatchlybox/job.json)
                 if [ "${'$'}(jq -r .phase /root/.cache/hatchlybox/job.json)" = interrupted ] || { [ "${'$'}pid" -gt 0 ] && ! kill -0 "${'$'}pid" 2>/dev/null; }; then hatchlybox health >/dev/null; fi
                 sleep 2
             done
+            sleep 1   # the log's last lines
             phase=${'$'}(jq -r '.phase' /root/.cache/hatchlybox/job.json)
             [ "${'$'}(jq -r '.id' /root/.cache/hatchlybox/job.json)" = "${'$'}expected" ] || exit 1
             case "${'$'}phase" in ready|done|installed|accepted|live|testers) exit 0 ;; *) echo "Task needs review: ${'$'}phase"; exit 1 ;; esac
