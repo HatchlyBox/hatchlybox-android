@@ -68,12 +68,67 @@ No Hatchlybox account, no analytics, no server of ours in between. The AI helper
 - **Themes and 23 painted backgrounds**, with opacity you choose and pages you drag into order.
 - **Web apps**: share any site from your browser to Hatchlybox, and it becomes an app with its own icon.
 - **Quick actions** from the create box: "open maps", "call Ana", "timer 5 min".
+- **Reminders** in words ("remind me at 6 to call mum"), kept by Hatchlybox or saved to your calendar.
+
+### On Android: AI helpers right on your home screen
+- **Claude Code, Codex or OpenCode as a widget**: long-press the home screen, **Add a widget › Agents**, and pick
+  one. It's the real command-line tool in a full terminal on your home screen, ready to type to, with a key bar
+  over the keyboard for Tab, Esc, Ctrl and the arrows.
+- **It carries on where you left off**: after an update or a restart, the helper picks up its last conversation.
+- **A plain terminal** too (**Add a widget › Terminal**), with Hatchlybox's own Linux (Alpine) behind it.
+- **Or just chat**: the create box's Chat mode talks to the same helpers, and the conversation keeps going while
+  you do something else.
 
 ### On Android: hands on your phone
-- **Ask in words, and it acts**: a small on-device model (Google's FunctionGemma, offline, about a second) turns
-  what you type into an action on the phone.
-- **You stay in control**: safe actions run straight away, others need a tap, and sensitive ones need your
-  fingerprint or face. A gold light shows where every action goes.
+Hatchlybox can do things on the phone for you, and so can your AI helper, but only as far as you allow.
+
+- **Ask in words, and it acts**: "text Ana I'm late", "close YouTube", "turn on the flashlight". A small on-device
+  model (Google's FunctionGemma, offline, about a second) turns what you type into an action, and you tap it.
+- **Teach it new actions**: describe one ("tell me the next bus from my stop") and an AI helper builds it.
+- **Actions in other apps**: with Hatchlybox switched on in Android's **Accessibility** settings, it can press
+  Send in WhatsApp, close apps, take screenshots and lock the phone. It reads the screen only while your action
+  runs, and keeps nothing.
+- **Hands on for AI helpers**: with Accessibility on, an agent can also use the phone the way you do: read what's
+  on the screen, then tap, type and scroll in any app. It asks you first each time, and your yes lasts 30 minutes.
+  A gold cursor shows every place it looks or taps, and a **Stop** button at the top ends it at once. When a
+  choice is yours (a size, an address, pickup or delivery), it asks you in a notification instead of guessing.
+
+**The safeguards** are built into the app's code, not just told to the AI, so text on a web page or in a message
+can't talk an agent past them:
+- Safe actions run straight away. Others need your tap. Sensitive ones (calls, messages, uninstalling) also
+  need your fingerprint, face or screen lock.
+- An agent never presses the final button of a payment, never types a password or card number, and never
+  touches Hatchlybox's own screens, Android's permission screens or the Accessibility settings.
+- Nothing happens while the phone is locked, and an agent stuck tapping the same spot is stopped.
+- Every action, by you or by an agent, goes in the **action log** (Settings › Actions): what it was, who asked
+  and how it went.
+
+> **Please read:** AI helpers can misunderstand you or make mistakes. Hatchlybox has the safeguards above, but no
+> safeguard catches everything. You choose whether to switch these features on and what to allow, and you're
+> responsible for actions you allow on your phone and accounts. The Hatchlybox project and its contributors are
+> not responsible for what an AI helper or an automated action does. Hatchlybox comes with no warranty (see the
+> [licence](LICENSE)). Keep an eye on the gold cursor and the action log, and tap **Stop** whenever something
+> looks wrong.
+
+### You decide what's on
+Every feature that does something on its own can be switched on or off at any time in Hatchlybox's **Settings**:
+
+| Setting | What it does | Starts |
+| --- | --- | --- |
+| Use as home screen | Hatchlybox as your home app, or just an app in the drawer | off |
+| Phone apps | Your other apps in Hatchlybox's library | on |
+| Actions in other apps | Pressing buttons in other apps, screenshots, locking the phone (Android's Accessibility settings) | off |
+| AI helpers can use the screen | Agents may ask to read and use the screen for 30 minutes | asks each time |
+| Before sensitive actions | Which check sensitive actions need: fingerprint, face or screen lock | you pick |
+| Carry on with another AI helper | When one helper hits its usage limit, another finishes the job | on |
+| Skills | Each kind of feature the agents may use, one switch each | on |
+| Automatic updates | Keeps the AI helpers and tools up to date | on |
+| Create box | Suggestions while typing, finishing your words, example ideas, the agent picker, the gold thread | on |
+| Reminders | Saved to your calendar, or kept by Hatchlybox | calendar |
+
+The **Actions in other apps** switch lives in Android's own settings: in Hatchlybox, **Settings › Actions ›
+Switch on** takes you there. If Android says it's a **restricted setting** (it does for apps installed from a
+file), Hatchlybox shows the three steps to allow it.
 
 ## Getting started
 
