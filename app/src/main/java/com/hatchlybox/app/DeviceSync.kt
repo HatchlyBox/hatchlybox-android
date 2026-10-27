@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.content.Context
 import android.net.wifi.WifiManager
@@ -84,7 +84,7 @@ object DeviceSync {
     /** A hatchlybox://sync/<code> link from the camera or a browser. */
     fun link(intent: android.content.Intent?) {
         val d = intent?.data ?: return
-        if (d.scheme == "hatchlybox" && d.host == "sync") pendingLink = d.toString()
+        if (d.scheme == "hatchlybox-nightly" && d.host == "sync") pendingLink = d.toString()
     }
 
     private fun wifiLock(app: Context, tag: String) = runCatching {

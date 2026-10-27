@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.content.Context
 import androidx.compose.runtime.getValue
@@ -32,7 +32,7 @@ object Assist {
     private const val MODEL_URL = "https://huggingface.co/unsloth/functiongemma-270m-it-GGUF/resolve/main/functiongemma-270m-it-Q8_0.gguf"
     private const val MODEL_SHA = "8a17a4eda2b28eaf685a487129fd5295eeff3f722b9c6451dd3d98c18c23a98d"
     const val MODEL_MB = 292
-    private const val PORT = 8772
+    private const val PORT = 8773
 
     /** none, downloading, ready (or failed: the message). */
     var state by mutableStateOf("none")

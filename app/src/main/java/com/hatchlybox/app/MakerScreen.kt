@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics

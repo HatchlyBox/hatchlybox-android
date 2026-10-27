@@ -128,7 +128,7 @@ public class Sync {
             daemon(() -> { try { if ("paired".equals(readLine(h.getInputStream()))) arrived.add(h); } catch (IOException e) { /* closed */ } });
         }
         List<String> ips = addresses();
-        String link = "hatchlybox://sync/" + code + (ips.isEmpty() ? "" : "?at=" + ips.get(0) + ":" + port);
+        String link = "hatchlybox-nightly://sync/" + code + (ips.isEmpty() ? "" : "?at=" + ips.get(0) + ":" + port);
         status("waiting", "code", code, "port", port, "addresses", ips, "link", link, "qr", Qr.rows(link));
         Socket s = arrived.poll(WAIT_MS, TimeUnit.MILLISECONDS);
         for (Closeable c : open) if (c != s) try { c.close(); } catch (IOException e) { /* gone */ }
@@ -883,11 +883,11 @@ public class Sync {
     }
     static String hexOf(byte[] b) { StringBuilder s = new StringBuilder(); for (byte x : b) s.append(String.format("%02x", x)); return s.toString(); }
     static byte[] hex(String s) { byte[] b = new byte[s.length() / 2]; for (int i = 0; i < b.length; i++) b[i] = (byte) Integer.parseInt(s.substring(2 * i, 2 * i + 2), 16); return b; }
-    /** "7 Violet  orbit", or a hatchlybox://sync/ link → "7-violet-orbit" (a link's ?at= becomes --to). */
+    /** "7 Violet  orbit", or a hatchlybox-nightly://sync/ link → "7-violet-orbit" (a link's ?at= becomes --to). */
     static String normal(String code) {
         String c = code.trim();
-        if (c.startsWith("hatchlybox://sync/")) {
-            c = c.substring("hatchlybox://sync/".length());
+        if (c.startsWith("hatchlybox-nightly://sync/")) {
+            c = c.substring("hatchlybox-nightly://sync/".length());
             int q = c.indexOf("?at=");
             if (q >= 0) { if (!opts.containsKey("to")) opts.put("to", c.substring(q + 4)); c = c.substring(0, q); }
         }

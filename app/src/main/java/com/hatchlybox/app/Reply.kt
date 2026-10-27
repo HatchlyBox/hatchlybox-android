@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll

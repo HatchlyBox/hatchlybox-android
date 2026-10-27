@@ -51,7 +51,7 @@
         <service android:name=".MakerService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service android:name=".SetupService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service android:name=".TermSignInService" android:exported="false" android:foregroundServiceType="dataSync" />
-        <provider android:name="androidx.core.content.FileProvider" android:authorities="com.hatchlybox.app.files" android:exported="false" android:grantUriPermissions="true">
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="com.hatchlybox.nightly.files" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
         <activity
@@ -73,7 +73,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="hatchlybox" android:host="sync" />
+                <data android:scheme="hatchlybox-nightly" android:host="sync" />
             </intent-filter>
         </activity>
         <!-- In a browser's Share menu: adds the page to the home screen as a web app. -->

@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*

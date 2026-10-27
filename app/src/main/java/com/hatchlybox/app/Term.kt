@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 object Ansi {
     private val escapes = Regex("""\u001B(\[[0-?]*[ -/]*[@-~]|\][^\u0007\u001B]*(\u0007|\u001B\\)|[()][0-9A-Za-z]|[@-Z\\-_])""")

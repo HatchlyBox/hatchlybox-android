@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.content.Context
 import java.io.File
@@ -45,10 +45,10 @@ class Linux(private val context: Context) {
             "HOME" to "/root", "USER" to "root", "SHELL" to "/bin/bash", "LANG" to "C.UTF-8", "TMPDIR" to "/tmp",
             "PATH" to "/root/.local/bin:/root/.opencode/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             "TERM" to if (pty) "xterm-256color" else "dumb",
-            "IS_SANDBOX" to "1", "USE_BUILTIN_RIPGREP" to "0", "DISABLE_AUTOUPDATER" to "1", "BROWSER" to "/root/.local/bin/xdg-open", "ADB_SERVER_SOCKET" to "tcp:127.0.0.1:5041",
+            "IS_SANDBOX" to "1", "USE_BUILTIN_RIPGREP" to "0", "DISABLE_AUTOUPDATER" to "1", "BROWSER" to "/root/.local/bin/xdg-open", "ADB_SERVER_SOCKET" to "tcp:127.0.0.1:5042",
             // Hatchlybox Engine's folders in this app (a new install, so they have the engine's own names).
             "HATCHLYBOX_HOME" to "/root/.local/share/hatchlybox", "HATCHLYBOX_CACHE" to "/root/.cache/hatchlybox", "HATCHLYBOX_BACKUPS" to "/root/Backups/hatchlybox",
-            "HATCHLYBOX_APPS" to "/root/apps", "HATCHLYBOX_PORTS" to "/root/ports", "HATCHLYBOX_DEVICE_NAME" to deviceName,
+            "HATCHLYBOX_APPS" to "/root/apps", "HATCHLYBOX_PORTS" to "/root/ports", "HATCHLYBOX_DEVICE_NAME" to "$deviceName (Nightly)", "HATCHLYBOX_SYNC_UDP" to "47208", "HATCHLYBOX_SYNC_CALL_UDP" to "47209",
         ) + (if (pty) emptyMap() else mapOf("NO_COLOR" to "1")) + extraEnv
         val script = if (pty) {
             "exec script -qfec 'stty cols $cols rows $rows 2>/dev/null; eval \"\$CMD\"' /dev/null"

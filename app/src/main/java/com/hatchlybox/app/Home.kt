@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.horizontalScroll

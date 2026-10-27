@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import kotlin.math.PI
 import kotlin.math.abs

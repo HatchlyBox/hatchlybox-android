@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.content.Context
 import android.content.SharedPreferences

@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription

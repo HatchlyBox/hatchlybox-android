@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue

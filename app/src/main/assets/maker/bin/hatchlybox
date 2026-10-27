@@ -1534,7 +1534,7 @@ KEYS=$DATA/keys
 PSTATE=$CACHE/play.json
 API=https://androidpublisher.googleapis.com/androidpublisher/v3/applications
 UPAPI=https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications
-KEY_PORT=8766
+KEY_PORT=8878
 
 b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
 

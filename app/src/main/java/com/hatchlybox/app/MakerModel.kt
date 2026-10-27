@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.app.Application
 import android.content.*
@@ -499,7 +499,7 @@ class MakerModel(app: Application) : AndroidViewModel(app) {
     }
     fun backups(): List<File> = linux.hostFile("/root/Backups/hatchlybox").listFiles().orEmpty().filter { it.extension == "enc" }.sortedByDescending { it.lastModified() }
     fun shareBackup(file: File) {
-        val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.app.files", file)
+        val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.nightly.files", file)
         launch(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("application/octet-stream").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Share encrypted backup").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
     }
     fun importBackup(uri: Uri) {
@@ -728,7 +728,7 @@ class MakerModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- launcher mode: Hatchlybox as the phone's home screen ----------
 
-    private val homeAlias get() = ComponentName(getApplication<Application>(), "com.hatchlybox.app.HomeAlias")
+    private val homeAlias get() = ComponentName(getApplication<Application>(), "com.hatchlybox.nightly.HomeAlias")
     /** The home-screen entry is switched on (the phone may still use another launcher until it's chosen). */
     var launcherMode by mutableStateOf(runCatching { getApplication<Application>().packageManager.getComponentEnabledSetting(homeAlias) == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED }.getOrDefault(false))
     /** Hatchlybox is the phone's home screen now. Checked on every resume. */
@@ -1280,7 +1280,7 @@ class MakerModel(app: Application) : AndroidViewModel(app) {
             val ok = withContext(Dispatchers.IO) { runCatching { linux.run("cd /root/ports/${quote(slug)}/${quote(target)} && if [ -d export ]; then tar czf ${quote(out)} -C export .; else cd .. && tar czf ${quote(out)} --exclude=node_modules --exclude=.git ${quote(target)}; fi").first == 0 }.getOrDefault(false) }
             val f = linux.hostFile(out)
             if (!ok || !f.isFile) { notice = "Couldn't pack the files."; return@launch }
-            val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.app.files", f)
+            val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.nightly.files", f)
             launch(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("application/gzip").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Export for ${portName(target)}").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
         }
     }
@@ -1309,7 +1309,7 @@ class MakerModel(app: Application) : AndroidViewModel(app) {
         val ext = if(bundle) "aab" else "apk"
         val f = File(cache, "apks/${a.text("slug")}.$ext")
         if (!f.isFile) { notice = "Build ${if(bundle) "the Play bundle" else "this app"} first."; return }
-        val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.app.files", f)
+        val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.nightly.files", f)
         val mime = if(bundle) "application/octet-stream" else "application/vnd.android.package-archive"
         val intent = if(share || bundle) Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
         else Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime)
@@ -1323,7 +1323,7 @@ class MakerModel(app: Application) : AndroidViewModel(app) {
     fun shareUploadKey(a: JSONObject) {
         val file = File(cache, "apks").listFiles().orEmpty().filter { it.name.startsWith(a.text("slug") + "-") && it.name.endsWith("-upload-key.txt") }.maxByOrNull { it.lastModified() }
         if (file == null) { notice = "Create an encrypted upload-key backup first."; return }
-        val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.app.files", file)
+        val uri = FileProvider.getUriForFile(getApplication(), "com.hatchlybox.nightly.files", file)
         launch(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Save encrypted upload-key backup").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
     }
     fun restoreUploadKey(a: JSONObject, uri: Uri) {

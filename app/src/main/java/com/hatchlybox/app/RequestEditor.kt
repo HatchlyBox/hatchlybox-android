@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult

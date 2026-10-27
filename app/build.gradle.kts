@@ -8,16 +8,16 @@ plugins {
 }
 
 android {
-    namespace = "com.hatchlybox.app"
+    namespace = "com.hatchlybox.nightly"
     compileSdk = 36
     buildToolsVersion = "35.0.0"
 
     defaultConfig {
-        applicationId = "com.hatchlybox.app"
+        applicationId = "com.hatchlybox.nightly"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "6.3"
+        versionCode = 4
+        versionName = "1.0-nightly.4"
         ndk { abiFilters += "arm64-v8a" }
     }
 

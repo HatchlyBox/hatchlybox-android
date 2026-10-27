@@ -1,4 +1,4 @@
-package com.hatchlybox.app
+package com.hatchlybox.nightly
 
 import android.app.*
 import android.content.*
@@ -84,7 +84,7 @@ class ChatTaskService : Service() {
         val open = PendingIntent.getActivity(this, 72, Intent(this, MainActivity::class.java).putExtra("openTask", true), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val stop = PendingIntent.getService(this, 73, Intent(this, ChatTaskService::class.java).setAction("stop"), PendingIntent.FLAG_IMMUTABLE)
         try {
-            startForeground(72, Notification.Builder(this, "chat-work").setSmallIcon(R.drawable.ic_stat_hatchlybox).setContentTitle("Hatchlybox · Agent working")
+            startForeground(72, Notification.Builder(this, "chat-work").setSmallIcon(R.drawable.ic_stat_hatchlybox).setContentTitle("Hatchlybox Nightly · Agent working")
                 .setContentText("Tap to return. Stop is available in Chat.").setContentIntent(open).setOngoing(true)
                 .addAction(Notification.Action.Builder(null, "Stop", stop).build()).build())
         } catch (e: Exception) { AgentChat.stop(); stopSelf(); return START_NOT_STICKY }
@@ -240,7 +240,7 @@ class SyncTaskService : Service() {
         nm.createNotificationChannel(NotificationChannel("device-sync", "Device synchronization", NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 74, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 75, Intent(this, SyncTaskService::class.java).setAction("stop"), PendingIntent.FLAG_IMMUTABLE)
-        try { startForeground(74, Notification.Builder(this, "device-sync").setSmallIcon(R.drawable.ic_stat_hatchlybox).setContentTitle("Hatchlybox · Device sync")
+        try { startForeground(74, Notification.Builder(this, "device-sync").setSmallIcon(R.drawable.ic_stat_hatchlybox).setContentTitle("Hatchlybox Nightly · Device sync")
             .setContentText("Listening for your paired devices").setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null, "Stop", stop).build()).build()) }
         catch (e: Exception) { DeviceSync.stopServing(); stopSelf(); return START_NOT_STICKY }
         main.removeCallbacks(tick); main.postDelayed(tick, 3000)
@@ -255,7 +255,7 @@ object Diagnostics {
         val packageInfo = c.packageManager.getPackageInfo(c.packageName, 0)
         val engine = runCatching { m.linux.hostFile("/root/.local/share/hatchlybox/standalone-version").readText().trim() }.getOrDefault("not installed")
         val text = buildString {
-            appendLine("Hatchlybox diagnostic report")
+            appendLine("Hatchlybox Nightly diagnostic report")
             appendLine("App: ${packageInfo.versionName}; Android SDK ${Build.VERSION.SDK_INT}; engine $engine")
             appendLine("Free storage: ${c.filesDir.usableSpace}; agent running: ${AgentChat.running}; engine running: ${MakerRuntime.running}")
             appendLine("Setup running: ${Setup.installing}; sync running: ${DeviceSync.serving}")
