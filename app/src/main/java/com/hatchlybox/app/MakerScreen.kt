@@ -776,7 +776,9 @@ internal fun SetupNotice(m: MakerModel, modifier: Modifier) {
 class LibItem(val key: String, val type: String, val label: String, val sort: Long, val word: String?, val open: () -> Unit,
                       val export: (() -> Unit)? = null, val info: (() -> Unit)? = null, val remove: (() -> Unit)? = null,
                       val install: Pair<String, () -> Unit>? = null, val uninstall: (() -> Unit)? = null,
-                      val home: Pair<String, String>? = null, val systems: List<String> = emptyList(), val icon: @Composable (Int) -> Unit)
+                      val home: Pair<String, String>? = null, val systems: List<String> = emptyList(),
+                      /** The Android package it opens, when there's one on this phone: a creation installed here is also among the phone's apps. */
+                      val pkg: String? = null, val icon: @Composable (Int) -> Unit)
 
 /** A system's colour, for the dots on a creation's icon and its lines on its page. */
 @Composable
@@ -823,7 +825,7 @@ internal fun libraryItems(m: MakerModel, web: AppModel, openWeb: (Project) -> Un
             info = { m.library = false; m.openApp(a) },
             install = if (act == "install") word to { m.artifact(a) } else null,
             uninstall = if (installed) ({ m.uninstall(a.text("pkg")) }) else null,
-            home = "app" to "apk:" + a.text("slug"), systems = systems) { size -> AppIcon(m, a, size) }
+            home = "app" to "apk:" + a.text("slug"), systems = systems, pkg = a.text("pkg").takeIf { installed }) { size -> AppIcon(m, a, size) }
     }.sortedByDescending { it.sort }
     val others = m.creations.filter { c -> m.apps.none { it.text("slug") == c.text("slug") } }.map { c ->
         val slug = c.text("slug"); val systems = m.systems(c)
@@ -839,7 +841,7 @@ internal fun libraryItems(m: MakerModel, web: AppModel, openWeb: (Project) -> Un
     }.sortedByDescending { it.sort }
     val phone = if (m.showPhoneApps) m.phoneApps.map { app ->
         LibItem("phone:${app.pkg}/${app.activity}", "phone", app.label, 0, null, { m.launch(app) }, info = { m.appInfo(app.pkg) },
-            uninstall = if (app.removable) ({ m.uninstall(app.pkg) }) else null, home = "app" to "phone:${app.pkg}/${app.activity}") { size ->
+            uninstall = if (app.removable) ({ m.uninstall(app.pkg) }) else null, home = "app" to "phone:${app.pkg}/${app.activity}", pkg = app.pkg) { size ->
             if (app.icon != null) Image(app.icon, null, Modifier.size(size.dp))
             else Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape((size / 4.5).dp), modifier = Modifier.size(size.dp)) {
                 Box(contentAlignment = Alignment.Center) { Text(app.label.take(1).uppercase(), style = MaterialTheme.typography.titleLarge) }

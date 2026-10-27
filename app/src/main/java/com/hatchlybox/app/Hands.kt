@@ -77,16 +77,54 @@ object Hands {
 
     fun byName(n: String) = all().firstOrNull { it.name == n }
 
-    /** The app the text names: among the library's items (apps made here and the phone's). */
-    fun appNamed(items: List<LibItem>, name: String): LibItem? {
-        val q = name.trim().lowercase(Locale.getDefault()).removePrefix("the ").removeSuffix(" app").trim()
-        if (q.isEmpty()) return null
-        val exact = items.filter { it.label.lowercase(Locale.getDefault()) == q }
-        if (exact.isNotEmpty()) return exact.singleOrNull()
-        val prefix = items.filter { it.label.lowercase(Locale.getDefault()).startsWith(q) }
-        if (prefix.isNotEmpty()) return prefix.singleOrNull()
-        return items.filter { q.length >= 4 && it.label.lowercase(Locale.getDefault()).contains(q) }.singleOrNull()
+    /** A name as people and agents say it: "Hello-World!", "the hello world app" and "Hello World" are the same. */
+    private fun plain(s: String) = s.lowercase(Locale.getDefault()).replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+        .removePrefix("the ").removeSuffix(" app").removeSuffix(" game").trim()
 
+    /** Each app once: a creation installed here is also among the phone's apps, under the same name. */
+    fun distinctApps(items: List<LibItem>): List<LibItem> {
+        val ours = items.filter { it.type != "phone" }.mapNotNull { it.pkg }.toSet()
+        return items.filter { it.type != "phone" || it.pkg !in ours }
+    }
+
+    /** The names it goes by: its label, and a creation's slug ("hello-world"). */
+    private fun names(i: LibItem) = listOfNotNull(plain(i.label),
+        i.key.substringAfter(':').takeIf { i.type != "phone" && i.type != "site" && i.key.substringBefore(':') in setOf("apk", "made") }?.let(::plain)).distinct()
+
+    /** How many letters apart two names are (a typo or two: "hellow world"). */
+    private fun apart(a: String, b: String): Int {
+        var prev = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            val cur = IntArray(b.length + 1); cur[0] = i
+            for (j in 1..b.length) cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+            prev = cur
+        }
+        return prev[b.length]
+    }
+
+    /** The apps the text could mean, best first: the same name, then names that start with it, contain it, or are a typo away. */
+    private fun appCandidates(items: List<LibItem>, name: String): List<LibItem> {
+        val q = plain(name)
+        if (q.isEmpty()) return emptyList()
+        val apps = distinctApps(items)
+        val tiers = listOf<(String) -> Boolean>(
+            { it == q }, { it.startsWith(q) }, { q.length >= 4 && it.contains(q) },
+            { q.length >= 4 && apart(it, q) <= maxOf(1, q.length / 6) },
+        )
+        for (t in tiers) apps.filter { i -> names(i).any(t) }.takeIf { it.isNotEmpty() }?.let { return it }
+        return emptyList()
+    }
+
+    /** The app the text names: among the library's items (apps made here and the phone's). */
+    fun appNamed(items: List<LibItem>, name: String): LibItem? = appCandidates(items, name).singleOrNull()
+
+    /** Why no app was found, with what it could have meant, so whoever asked can say it again. */
+    fun noApp(items: List<LibItem>, name: String): Done {
+        val several = appCandidates(items, name)
+        if (several.size > 1) return Done("Which one: " + several.take(5).joinToString { "\"${it.label}\"" } + "? Say its full name.", false)
+        val words = plain(name).split(' ').filter { it.length >= 3 }
+        val near = distinctApps(items).filter { i -> words.any { w -> plain(i.label).split(' ').any { it.startsWith(w) || apart(it, w) <= 1 } } }
+        return Done("No app called ${name.trim()} here." + if (near.isEmpty()) "" else " Close names: " + near.take(5).joinToString { "\"${it.label}\"" } + ".", false)
     }
 
     private fun person(c: HandCall, kind: String = "phone"): Person? {
@@ -103,12 +141,16 @@ object Hands {
     private val builtIn: List<Hand> = listOf(
         Hand("open_app", "Open an app", "Open an app on the phone by its name", listOf("open", "launch", "start", "run", "go to", "abre", "abrir"),
             listOf(Param("app", "string", "The app's name, as said")), Level.OPEN, Icons.Outlined.Apps) { c ->
-            val item = appNamed(c.items, c.str("app")) ?: return@Hand Done("No app called ${c.str("app")} here.", false)
-            Reach.open(c.context, c.m, item); Done()
+            val item = appNamed(c.items, c.str("app")) ?: return@Hand noApp(c.items, c.str("app"))
+            Reach.open(c.context, c.m, item)
+            // An Android creation that isn't on the phone yet opens its page: whoever asked should know it didn't start.
+            if (item.type == "apk" && item.pkg == null && item.install != null)
+                Done("${item.label} isn't installed on this phone yet, so its page is open: ${item.install.first} is there. Android asks the user to confirm the install.", false)
+            else Done()
         },
         Hand("close_app", "Close an app", "Close (stop) an app that is running", listOf("close", "shut", "quit", "kill", "stop", "exit", "fecha", "fechar"),
             listOf(Param("app", "string", "The app's name, as said")), Level.CONFIRM, Icons.Outlined.Close) { c ->
-            val item = appNamed(c.items, c.str("app")) ?: return@Hand Done("No app called ${c.str("app")} here.", false)
+            val item = appNamed(c.items, c.str("app")) ?: return@Hand noApp(c.items, c.str("app"))
             val pkg = item.key.removePrefix("phone:").substringBefore('/').takeIf { item.key.startsWith("phone:") }
                 ?: c.m.apps.firstOrNull { "apk:" + it.text("slug") == item.key }?.text("pkg") ?: return@Hand Done("Only apps can be closed.", false)
             closeApp(c, pkg, item.label)
@@ -334,7 +376,7 @@ object Hands {
         },
         Hand("uninstall_app", "Uninstall", "Uninstall (remove) an app from the phone", listOf("uninstall", "remove", "delete", "desinstala"),
             listOf(Param("app", "string", "The app's name")), Level.SECURE, Icons.Outlined.DeleteForever) { c ->
-            val item = appNamed(c.items, c.str("app")) ?: return@Hand Done("No app called ${c.str("app")} here.", false)
+            val item = appNamed(c.items, c.str("app")) ?: return@Hand noApp(c.items, c.str("app"))
             val go = item.uninstall ?: return@Hand Done("${item.label} can't be uninstalled.", false)
             go(); Done()
         },

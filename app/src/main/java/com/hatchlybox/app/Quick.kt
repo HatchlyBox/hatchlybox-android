@@ -182,6 +182,7 @@ internal fun quickActions(context: Context, m: MakerModel, text: String, apps: L
     val cmd = commandOf(t)
     val out = ArrayList<Quick>()
     fun appMatches(q: String, max: Int): List<LibItem> {
+        val apps = Hands.distinctApps(apps)
         val low = q.lowercase(Locale.getDefault())
         if (low.isEmpty()) return m.recent.mapNotNull { k -> apps.firstOrNull { it.key == k } }.take(max)
         return (apps.filter { it.label.lowercase(Locale.getDefault()).startsWith(low) }.sortedByDescending { m.uses[it.key] ?: 0 } +
