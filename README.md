@@ -27,12 +27,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/agent-plays.gif" alt="An AI helper playing Neon Run, a game it made, on the phone" width="300">
+  <sub>Asked to “open Hello World App and play”, the AI helper opens the game it made and plays it on the phone, at real speed.
+  The whole video (1:14) is below the picture.</sub>
 </p>
 
 <p align="center">
-  <sub>Asked to “open Hello World and play”, the AI helper opens the game it made and plays it on the phone, at real speed.
-  The whole video (1:14) is below.</sub>
+  <img src="docs/media/agent-plays.gif" alt="An AI helper playing Neon Run, a game it made, on the phone" width="300">
 </p>
 
 https://github.com/user-attachments/assets/d24f6618-9ae8-4f4d-b49b-aa635f56983c
@@ -47,7 +47,7 @@ https://github.com/user-attachments/assets/d24f6618-9ae8-4f4d-b49b-aa635f56983c
 
 Hatchlybox makes apps and games from what you describe, on Android, Linux, macOS and Windows. Type what you want,
 such as *"a budget tracker with a pie chart"* or *"a neon racing game"*, and an AI helper (Claude Code, Codex or
-OpenCode) writes it, builds it and installs it on the device you're using. Ask for changes the same way. Then ask for
+OpenCode) writes it, builds it and installs it on the device you're using. HatchlyBox for android can also use your device autonomously to play games, or use Apps. You can ask for changes for your creations the same way. Then ask for
 the same creation on another system: the Android app gets its Linux, macOS, Windows or web version. Everything you
 make lives in one library, synced between your phones and computers.
 
