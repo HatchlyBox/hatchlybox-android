@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest">Download</a> ·
+  <a href="../../releases">Download</a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#features">Features</a> ·
   <a href="app/src/main/assets/legal/PRIVACY.md">Privacy</a> ·
@@ -26,16 +26,12 @@
   <a href="https://github.com/HatchlyBox/hatchlybox-android/discussions"><img alt="Discussions" src="https://img.shields.io/badge/questions-Discussions-56DCC9?labelColor=101828"></a>
 </p>
 
-<p align="center">
-  <sub>Asked to “open Hello World App and play”, the AI helper opens the game it made and plays it on the phone, at real speed.
-  The whole video (1:14) is below the picture.</sub>
-</p>
-
-<p align="center">
-  <img src="docs/media/agent-plays.gif" alt="An AI helper playing Neon Run, a game it made, on the phone" width="300">
-</p>
-
 https://github.com/user-attachments/assets/d24f6618-9ae8-4f4d-b49b-aa635f56983c
+
+<p align="center">
+  <sub>Asked to “open Hello World and play”, an AI helper opens Neon Run, a game it made on this phone, and plays it.
+  The start is at 2× speed, the game at real speed.</sub>
+</p>
 
 <p align="center">
   <img src="docs/media/home.jpg" alt="Hatchlybox home screen with a game made in it" width="220">
@@ -47,9 +43,14 @@ https://github.com/user-attachments/assets/d24f6618-9ae8-4f4d-b49b-aa635f56983c
 
 Hatchlybox makes apps and games from what you describe, on Android, Linux, macOS and Windows. Type what you want,
 such as *"a budget tracker with a pie chart"* or *"a neon racing game"*, and an AI helper (Claude Code, Codex or
-OpenCode) writes it, builds it and installs it on the device you're using. HatchlyBox for android can also use your device autonomously to play games, or use Apps. You can ask for changes for your creations the same way. Then ask for
-the same creation on another system: the Android app gets its Linux, macOS, Windows or web version. Everything you
-make lives in one library, synced between your phones and computers.
+OpenCode) writes it, builds it and installs it on the device you're using. Ask for changes the same way.
+
+**Say it → it's built → it's installed → it can use it.** Hatchlybox for Android can also use the phone on its own,
+when you allow it: open the app it just made and try it out, play a game, or get something done in your other apps,
+with a gold cursor showing every tap and a Stop button always in reach.
+
+Then ask for the same creation on another system: the Android app gets its Linux, macOS, Windows or web version.
+Everything you make lives in one library, synced between your phones and computers.
 
 | | Phone (Android) | Computer (Linux, macOS, Windows) |
 | --- | --- | --- |
@@ -106,7 +107,8 @@ Hatchlybox can do things on the phone for you, and so can your AI helper, but on
   Send in WhatsApp, close apps, take screenshots and lock the phone. It reads the screen only while your action
   runs, and keeps nothing.
 - **Hands on for AI helpers**: with Accessibility on, an agent can also use the phone the way you do: read what's
-  on the screen, then tap, type and scroll in any app. It asks you first each time, and your yes lasts 30 minutes.
+  on the screen, then tap, type and scroll in any app, including the apps and games it made for you, to check they
+  work (as in the video above). It thinks before every move, so fast arcade games are still a stretch. It asks you first each time, and your yes lasts 30 minutes.
   A gold cursor shows every place it looks or taps, and a **Stop** button at the top ends it at once. When a
   choice is yours (a size, an address, pickup or delivery), it asks you in a notification instead of guessing.
 
@@ -150,7 +152,7 @@ file), Hatchlybox shows the three steps to allow it.
 ## Getting started
 
 ### On your phone (Android 8 or later)
-1. Download `hatchlybox-<version>.apk` from the [latest release](../../releases/latest) and open it. Android asks
+1. Download `hatchlybox-<version>.apk` from the newest [release](../../releases) and open it. Android asks
    you to allow installs from your browser or file manager the first time.
 2. Open Hatchlybox. The welcome screen says what it downloads and what leaves the phone. Tap **Accept and start**.
 3. Setup downloads about 1 GB of free tools in the background (Alpine Linux, Node.js, Java, Android's build
@@ -204,8 +206,8 @@ The full [privacy policy](app/src/main/assets/legal/PRIVACY.md) says exactly wha
 ## Building from source
 
 JDK 17 and the Android SDK, then `./gradlew --console=plain -q assembleRelease`. The engine inside the app
-(`app/src/main/assets/maker`) comes from [HatchlyBox/hatchlybox](https://github.com/HatchlyBox/hatchlybox), copied in with its
-`sync-hatchlybox.sh`. Your own builds are signed with the debug key: they install fine but can't update an official
+(`app/src/main/assets/maker`) comes from [HatchlyBox/hatchlybox](https://github.com/HatchlyBox/hatchlybox), copied
+in with its `sync-hatchlybox.sh`. Your own builds are signed with the debug key: they install fine but can't update an official
 copy (uninstall that one first).
 
 ## Support Hatchlybox
@@ -216,7 +218,9 @@ sponsorships pay for its development.
 ## Contributing
 
 Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), and the
-[Contributor Licence Agreement](CLA.md) for code. Security problems: [SECURITY.md](SECURITY.md), please not as a public issue. Everyone here follows the [code of conduct](CODE_OF_CONDUCT.md). Questions: [Discussions](https://github.com/HatchlyBox/hatchlybox-android/discussions).
+[Contributor Licence Agreement](CLA.md) for code. Report security problems as [SECURITY.md](SECURITY.md) says,
+please not as a public issue. Everyone here follows the [code of conduct](CODE_OF_CONDUCT.md). Questions go to
+[Discussions](https://github.com/HatchlyBox/hatchlybox-android/discussions).
 
 ## Licence
 
